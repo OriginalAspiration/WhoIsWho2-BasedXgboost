@@ -8,7 +8,7 @@ import numpy as np
 def compare_two_paper(paper_info_1, paper_info_2, author_rank):
     try:
         result = []
-        the_author_name = paper_info_1['authors'][author_rank-1]['name']
+        the_author_name = paper_info_1['authors'][author_rank]['name']
 
         same_author = 0
         for author_1 in paper_info_1['authors']:
@@ -26,7 +26,7 @@ def compare_two_paper(paper_info_1, paper_info_2, author_rank):
         same_org = 0
         for author_2 in paper_info_2['authors']:
             if author_2['name'] == the_author_name:
-                if author_2['org'] == paper_info_1['authors'][author_rank-1]['org']:
+                if author_2['org'] == paper_info_1['authors'][author_rank]['org']:
                     same_org += 1
                     break
         if same_org >= 1:
@@ -44,7 +44,7 @@ def compare_two_paper(paper_info_1, paper_info_2, author_rank):
         same_keyword = 0
         for keyword_1 in paper_info_1['keywords']:
             for keyword_2 in paper_info_2['keywords']:
-                if keyword_1.lower().strip() == keyword_2.lower().strip():
+                if replace_str(keyword_1) == replace_str(keyword_2):
                     same_keyword += 1
                     break
             if same_keyword >= 1:
@@ -60,6 +60,10 @@ def compare_two_paper(paper_info_1, paper_info_2, author_rank):
     return result
 
 
+def replace_str(input):
+    return input.strip().replace('_', '').replace('-', '').replace(' ', '').replace('.', '').lower()
+
+
 if __name__ == "__main__":
     with open('data/track2/train/train_unass_data.json', 'r') as r:
         train_unass_data = json.load(r)
@@ -71,7 +75,7 @@ if __name__ == "__main__":
     existing_data_hash_by_name = {}
     for person_id in train_existing_data:
         real_name = train_existing_data[person_id]['name']
-        replaced_real_name = real_name.strip().replace('_', ' ')
+        replaced_real_name = replace_str(real_name)
         if replaced_real_name not in existing_data_hash_by_name:
             existing_data_hash_by_name[replaced_real_name] = {}
         existing_data_hash_by_name[replaced_real_name][person_id] = train_existing_data[person_id]['papers']
@@ -83,10 +87,10 @@ if __name__ == "__main__":
         author_rank = int(unass_data[0][9:])
         unass_author_id = unass_data[1]
         unass_paper_info = train_pub[unass_paper_id]
-        the_author_name = unass_paper_info['authors'][author_rank-1]['name']
-        for same_name_author_id in existing_data_hash_by_name[the_author_name.lower().strip()]:
+        the_author_name = unass_paper_info['authors'][author_rank]['name']
+        for same_name_author_id in existing_data_hash_by_name[replace_str(the_author_name)]:
             one_person_sim_list = []
-            for paper_id in existing_data_hash_by_name[the_author_name.lower().strip()][same_name_author_id]:
+            for paper_id in existing_data_hash_by_name[replace_str(the_author_name)][same_name_author_id]:
                 one_person_sim_list.append(compare_two_paper(unass_paper_info, train_pub[paper_id], author_rank))
             train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
             if unass_author_id == same_name_author_id:

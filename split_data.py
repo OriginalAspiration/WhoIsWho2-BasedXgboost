@@ -18,7 +18,7 @@ for real_name in train_author:
             authors_of_the_paper = train_pub[the_paper_id]['authors']
             for index, authors_info in enumerate(authors_of_the_paper):
                 if authors_info['name'].lower().strip() == real_name.strip().replace('_', ' '):
-                    unass_data.append((the_paper_id + '-' + str(index + 1), person_id))
+                    unass_data.append((the_paper_id + '-' + str(index), person_id))
                     existing_data[person_id] = {
                         "name": real_name, "papers": [paper_id for paper_id in train_author[real_name][person_id] if not paper_id == the_paper_id]}
 

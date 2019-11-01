@@ -42,4 +42,19 @@ print ('F1-score: %.4f' %metrics.f1_score(test_y,y_pred))
 print ('Precesion: %.4f' %metrics.precision_score(test_y,y_pred))
 print(metrics.confusion_matrix(test_y,y_pred))
 
+print('----- save_model -----')
 bst.save_model('xgb_1.model')
+tar = xgb.Booster(model_file='xgb_1.model')
+
+ypred=tar.predict(dtest)
+ 
+# 设置阈值, 输出一些评价指标，选择概率大于0.5的为1，其他为0类
+y_pred = (ypred >= 0.3)*1
+ 
+from sklearn import metrics
+print ('AUC: %.4f' % metrics.roc_auc_score(test_y,ypred))
+print ('ACC: %.4f' % metrics.accuracy_score(test_y,y_pred))
+print ('Recall: %.4f' % metrics.recall_score(test_y,y_pred))
+print ('F1-score: %.4f' %metrics.f1_score(test_y,y_pred))
+print ('Precesion: %.4f' %metrics.precision_score(test_y,y_pred))
+print(metrics.confusion_matrix(test_y,y_pred))
