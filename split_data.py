@@ -21,7 +21,8 @@ for real_name in train_author:
                     unass_data.append((the_paper_id + '-' + str(index), person_id))
                     existing_data[person_id] = {
                         "name": real_name, "papers": [paper_id for paper_id in train_author[real_name][person_id] if not paper_id == the_paper_id]}
-
+# unass_data -> 随机抽一篇
+# existing_data -> 其余的加入训练集
 with open('data/track2/train/train_unass_data.json', 'w') as w:
     w.write(json.dumps(unass_data))
 with open('data/track2/train/train_existing_data.json', 'w') as w:
