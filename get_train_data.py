@@ -92,8 +92,18 @@ def get_doc_vector(doc):
     return doc_vector
 
 
+def pre_doc_vector_(doc):
+    global word_dict
+    word_dict = {}
+    total_word = 0
+    for word in doc.split():
+        if word not in word_dict:
+            word_dict[word] = total_word
+            total_word += 1
+
+
 def get_doc_vector_abstract(doc):
-    dict_size = len(word_dict_abstract)
+    dict_size = len(word_dict)
     doc_vector = [0 for i in range(dict_size)]
     for word in doc.split():
         if word not in word_dict_abstract:
