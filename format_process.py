@@ -6,6 +6,8 @@ from nltk.corpus import stopwords
 import string
 import json
 import pickle
+import time
+import tqdm
 
 
 def get_wordnet_pos(word):
@@ -30,7 +32,7 @@ def for_keywords_change_word_by_lemmatize(doc):
 def for_keywords_remove_stopword(doc):
     word_split = doc.split(" ")
     valid_word = []
-    for word in word_split:
+    for word in tqdm(word_split):
         word = word.strip(" ").strip(string.digits)
         if word != "":
             valid_word.append(word)
@@ -46,10 +48,13 @@ def for_keywords_remove_stopword(doc):
 
 
 def transform_sentence(doc):
-    doc = doc.strip().replace('_', '').replace('-', '').replace('/sub', '').replace(' sub ', " ")
-    doc = doc.replace("ABSTRACTS", '')
-    doc = for_keywords_change_word_by_lemmatize(doc)
-    doc = for_keywords_remove_stopword(doc)
+    try:
+        doc = doc.strip().replace('_', '').replace('-', '').replace('/sub', '').replace(' sub ', " ")
+        doc = doc.replace("ABSTRACTS", '')
+        doc = for_keywords_change_word_by_lemmatize(doc)
+        doc = for_keywords_remove_stopword(doc)
+    except:
+        doc = ""
     return doc
 
 
@@ -59,9 +64,10 @@ def transform_pub(cna_pub):
     whole_title_abstract = []
     total_word_abstract = 0
     total = 0
-    for data in cna_pub:
-        if total % 1000 == 0:
-            print("passage", total)
+    len_cna_pub = len(cna_pub)
+    for data in tqdm(cna_pub):
+        # if total % 1000 == 0:
+        #     print("passage: ", total, '/', len_cna_pub)
         # if total == 5:
         #     break
         # 处理标题：词干化->去掉停用词->加入if-idf
@@ -95,14 +101,19 @@ def transform_pub(cna_pub):
         # outf.write("passage : " + str(total) + "\n")
         # outf.write("\ttitle:" + cna_pub[data]['title'] + "\n")
         # outf.write("\tkeywords:" + (" ".join(cna_pub[data]['keywords'])) + "\n")
-        total += 1
-
+        # total += 1
+    print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish lemma ]")
     # if_idf = if * idf 出现在越多的文档里的词越不重要
     # Question : 这个if_idf要不要按照作者分？
+    len_title = len(whole_title)
     corpus_title = TextCollection(whole_title)
     eps = 0.0       # 单词频率精度
     word_dict = {}
-    for sentence in whole_title:
+    total = 0
+    for sentence in tqdm(whole_title):
+        if total % 1000 == 0:
+            print("\t title:",total, "/", len_title)
+        total += 1
         for word in sentence.split():
             if (corpus_title.idf(word) > eps) and (word not in word_dict):
                 word_dict[word] = total_word_title
@@ -112,19 +123,34 @@ def transform_pub(cna_pub):
         pickle.dump(corpus_title, model_tf_idf)
     with open('data/track2/train/train_word_dict.txt', 'wb') as word_file:
         pickle.dump(word_dict, word_file)
-
+    print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish title pickle ]")
     corpus_title_abstract = TextCollection(whole_title_abstract)
     word_dict_abstract = {}
-    for sentence in whole_title_abstract:
+    ftotal = [0, 0, 0, 0, 0, 0]
+    feps = [0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001]
+    len_abstract = len(whole_title_abstract)
+    total = 0
+    for sentence in tqdm(whole_title_abstract):
+        if total % 1000 == 0:
+            print("\t title:", total, "/", len_abstract)
+        total += 1
         for word in sentence.split():
-            if (corpus_title.idf(word) > eps) and (word not in word_dict_abstract):
+            if (corpus_title_abstract.idf(word) > eps) and (word not in word_dict_abstract):
+                now = corpus_title_abstract.idf(word)
+                for i in range(6):
+                    if now >= feps[i]:
+                        ftotal[i] += 1
                 word_dict_abstract[word] = total_word_abstract
                 total_word_abstract += 1
     with open('data/track2/train/train_abstract_tf_idf.txt', 'wb') as model_tf_idf2:
         pickle.dump(corpus_title_abstract, model_tf_idf2)
     with open('data/track2/train/train_abstract_word_dict.txt', 'wb') as word_file2:
         pickle.dump(word_dict_abstract, word_file2)
-    # print(word_dict_abstract)
+    print("Length of Word_abstract:", len(word_dict_abstract))
+    print("Length of Word_title:", len(word_dict))
+    print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish abstract pickle ]")
+    for i in range(6):
+        print("Eps ", feps[i], 'Cnt ', ftotal[i])
     #
     # doc_1 = whole_title[1]
     # doc_2 = whole_title[2]

@@ -85,6 +85,8 @@ def get_doc_vector(doc):
     dict_size = len(word_dict)
     doc_vector = [0 for i in range(dict_size)]
     for word in doc.split():
+        if word not in word_dict:
+            continue
         word_index = word_dict[word]
         doc_vector[word_index] = corpus_title.tf_idf(word, doc)
     return doc_vector
@@ -94,6 +96,8 @@ def get_doc_vector_abstract(doc):
     dict_size = len(word_dict_abstract)
     doc_vector = [0 for i in range(dict_size)]
     for word in doc.split():
+        if word not in word_dict_abstract:
+            continue
         word_index = word_dict_abstract[word]
         doc_vector[word_index] = corpus_abstract.tf_idf(word, doc)
     return doc_vector
@@ -120,7 +124,7 @@ def add_variate_title_abstract(result, paper_info_1, paper_info_2):
         # print("Cos:",ans)
     except:
         result.append(0)
-    reutrn
+    return
 #
 #
 #
@@ -168,7 +172,7 @@ def compare_two_paper(paper_info_1, paper_info_2, author_rank):
         # 第六维度 title相似度
         add_variate_title(result, paper_info_1, paper_info_2)
         # 第七维度 title+abstract相似度
-        add
+        add_variate_title_abstract(result, paper_info_1, paper_info_2)
     except:
         result = [0, 0, 0, 0, 0, 0]
     return result
@@ -208,9 +212,14 @@ if __name__ == "__main__":
             existing_data_hash_by_name[replaced_real_name] = {}
         existing_data_hash_by_name[replaced_real_name][person_id] = train_existing_data[person_id]['papers']
 
+    len_train_unass_data = len(train_unass_data)
+    print("The number of Train_unass_data:", len_train_unass_data)
     train_x = []
     train_y = []
+    total = 0
     for unass_data in train_unass_data:
+        print("[Unass_data ", total, "/", len_train_unass_data, "]")
+        total += 1
         unass_paper_id = unass_data[0][:8]
         author_rank = int(unass_data[0][9:])
         unass_author_id = unass_data[1]
