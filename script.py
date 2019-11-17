@@ -4,6 +4,7 @@ import pickle
 
 import numpy as np
 import xgboost as xgb
+from tqdm import tqdm
 
 
 def compare_two_paper(paper_info_1, paper_info_2, author_rank):
@@ -87,7 +88,7 @@ if __name__ == "__main__":
     result_dict = {}
     error_times = 0
     bst = xgb.Booster(model_file='xgb_1.model')
-    for index, unass_data in enumerate(cna_valid_unass_competition):
+    for index, unass_data in tqdm(enumerate(cna_valid_unass_competition)):
         unass_paper_id = unass_data[:8]
         author_rank = int(unass_data[9:])
         unass_paper_info = cna_valid_pub[unass_paper_id]
@@ -113,8 +114,8 @@ if __name__ == "__main__":
             print('error_times: ', error_times)
             print(e)
             result_dict['laYWugfp'].append(unass_paper_id)
-        if index % 100 == 0:
-            print('--- index: ' + str(index) + ' / ' + str(len(cna_valid_unass_competition)))
+        # if index % 100 == 0:
+        #     print('--- index: ' + str(index) + ' / ' + str(len(cna_valid_unass_competition)))
 
     with open('result.json', 'w') as w:
         w.write(json.dumps(result_dict))
