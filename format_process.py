@@ -104,39 +104,39 @@ def transform_pub(cna_pub):
     corpus_title = TextCollection(whole_title)
     with open('data/track2/train/train_tf_idf.txt', 'wb') as model_tf_idf:
         pickle.dump(corpus_title, model_tf_idf)
-    eps = 0.0       # 单词频率精度
-    word_dict = {}
-    for sentence in tqdm(whole_title):
-        for word in sentence.split():
-            if (corpus_title.idf(word) > eps) and (word not in word_dict):
-                word_dict[word] = total_word_title
-                total_word_title += 1
-
-    with open('data/track2/train/train_word_dict.txt', 'wb') as word_file:
-        pickle.dump(word_dict, word_file)
+    # eps = 0.0       # 单词频率精度
+    # word_dict = {}
+    # for sentence in tqdm(whole_title):
+    #     for word in sentence.split():
+    #         if (corpus_title.idf(word) > eps) and (word not in word_dict):
+    #             word_dict[word] = total_word_title
+    #             total_word_title += 1
+    #
+    # with open('data/track2/train/train_word_dict.txt', 'wb') as word_file:
+    #     pickle.dump(word_dict, word_file)
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish title pickle ]")
     corpus_title_abstract = TextCollection(whole_title_abstract)
     with open('data/track2/train/train_abstract_tf_idf.txt', 'wb') as model_tf_idf2:
         pickle.dump(corpus_title_abstract, model_tf_idf2)
-    word_dict_abstract = {}
-    ftotal = [0, 0, 0, 0, 0]
-    feps = [0.01, 0.001, 0.0001, 0.00001, 0.000001]
-    for sentence in tqdm(whole_title_abstract):
-        for word in sentence.split():
-            if (corpus_title_abstract.idf(word) > eps) and (word not in word_dict_abstract):
-                now = corpus_title_abstract.idf(word)
-                for i in range(5):
-                    if now >= feps[i]:
-                        ftotal[i] += 1
-                word_dict_abstract[word] = total_word_abstract
-                total_word_abstract += 1
-    with open('data/track2/train/train_abstract_word_dict.txt', 'wb') as word_file2:
-        pickle.dump(word_dict_abstract, word_file2)
-    print("Length of Word_abstract:", len(word_dict_abstract))
-    print("Length of Word_title:", len(word_dict))
+    # word_dict_abstract = {}
+    # ftotal = [0, 0, 0, 0, 0]
+    # feps = [0.01, 0.001, 0.0001, 0.00001, 0.000001]
+    # for sentence in tqdm(whole_title_abstract):
+    #     for word in sentence.split():
+    #         if (corpus_title_abstract.idf(word) > eps) and (word not in word_dict_abstract):
+    #             now = corpus_title_abstract.idf(word)
+    #             for i in range(5):
+    #                 if now >= feps[i]:
+    #                     ftotal[i] += 1
+    #             word_dict_abstract[word] = total_word_abstract
+    #             total_word_abstract += 1
+    # with open('data/track2/train/train_abstract_word_dict.txt', 'wb') as word_file2:
+    #     pickle.dump(word_dict_abstract, word_file2)
+    # print("Length of Word_abstract:", len(word_dict_abstract))
+    # print("Length of Word_title:", len(word_dict))
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish abstract pickle ]")
-    for i in range(5):
-        print("Eps ", feps[i], 'Cnt ', ftotal[i])
+    # for i in range(5):
+    #     print("Eps ", feps[i], 'Cnt ', ftotal[i])
     #
     # doc_1 = whole_title[1]
     # doc_2 = whole_title[2]
