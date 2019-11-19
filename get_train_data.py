@@ -9,6 +9,7 @@ import string
 import json
 import pickle
 import gensim
+import random
 
 import numpy as np
 from tqdm import tqdm
@@ -27,31 +28,11 @@ global corpus_title, corpus_abstract, model_title, model_abstract
 #   x7: abstract摘要相似度
 
 
-def cosVector(x, y):
-    if len(x) != len(y):
-        print('error input,x and y is not in the same space')
-        return 0
-    result1 = 0.0
-    result2 = 0.0
-    result3 = 0.0
-    for i in range(len(x)):
-        result1 += x[i]*y[i]   #sum(X*Y)
-        result2 += x[i]**2     #sum(X*X)
-        result3 += y[i]**2     #sum(Y*Y)
-    #print(result1)
-    #print(result2)
-    #print(result3)
-    # print("result is "+str(result1/((result2*result3)**0.5))) #结果显示
-    ans = result1/((result2*result3)**0.5)
-    # print("result is " + str(ans))  # 结果显示
-    return ans
-
-
-def add_variate_same_author(result, paper_info_1, paper_info_2):
+def add_variate_same_author(result, docs, paper_id_1, paper_id_2):
     try:
         same_author = 0
-        for author_1 in paper_info_1['authors']:
-            for author_2 in paper_info_2['authors']:
+        for author_1 in docs[paper_id_1]['authors']:
+            for author_2 in docs[paper_id_2]['authors']:
                 if author_1['name'] == author_2['name']:
                     same_author += 1
                     break
@@ -65,12 +46,14 @@ def add_variate_same_author(result, paper_info_1, paper_info_2):
         result.append(0)
 
 
-def add_variate_same_org(result, paper_info_1, paper_info_2, author_rank):
+# 判断是否是相同组织
+def add_variate_same_org(result, docs, paper_id_1, paper_id_2, author_rank):
     try:
+        the_author_name = docs[paper_id_1]['authors'][author_rank]['name']
         same_org = 0
-        for author_2 in paper_info_2['authors']:
-            if author_2['name'] == the_author_name:
-                if author_2['org'] == paper_info_1['authors'][author_rank]['org']:
+        for author_2 in docs[paper_id_2]['authors']:
+            if replace_str(author_2['name']) == the_author_name:
+                if author_2['org'] == docs[paper_id_1]['authors'][author_rank]['org']:
                     same_org += 1
                     break
         if same_org >= 1:
@@ -81,99 +64,61 @@ def add_variate_same_org(result, paper_info_1, paper_info_2, author_rank):
         result.append(0)
 
 
-def pre_doc_vector_(doc):
-    global word_dict
-    word_dict = {}
-    total_word = 0
-    for word in doc.split():
-        if word not in word_dict:
-            word_dict[word] = total_word
-            total_word += 1
-
-
-def get_doc_vector(doc):
-    global word_dict
-    dict_size = len(word_dict)
-    doc_vector = [0 for i in range(dict_size)]
-    for word in doc.split():
-        word_index = word_dict[word]
-        doc_vector[word_index] = corpus_title.tf_idf(word, doc)
-    return doc_vector
-
-
-def get_doc_vector_abstract(doc):
-    dict_size = len(word_dict)
-    doc_vector = [0 for i in range(dict_size)]
-    for word in doc.split():
-        word_index = word_dict_abstract[word]
-        doc_vector[word_index] = corpus_abstract.tf_idf(word, doc)
-    return doc_vector
-
-
-def add_variate_title(result, paper_info_1, paper_info_2):
+def add_nltk_title(result, paper_id_1, paper_id_2):
+    global nltk_title
     try:
-        pre_doc_vector_(paper_info_1['title'] + paper_info_2['title'])
-        title_vector_1 = get_doc_vector(paper_info_1['title'])
-        title_vector_2 = get_doc_vector(paper_info_2['title'])
-        ans = cosVector(title_vector_1, title_vector_2)
-        result.append(ans)
-        # print("Cos:",ans)
+        tup = (paper_id_1, paper_id_2)
+        result.append(tup)
     except:
         result.append(0)
-    return
 
 
-def add_variate_title_abstract(result, paper_info_1, paper_info_2):
+def add_nltk_abstract(result, paper_id_1, paper_id_2):
+    global nltk_abstract
     try:
-        pre_doc_vector_(paper_info_1['title'] + paper_info_1['abstract']
-                        + paper_info_2['title'] +paper_info_2['abstract'])
-        title_vector_1 = get_doc_vector_abstract(paper_info_1['abstract'] + paper_info_1['title'])
-        title_vector_2 = get_doc_vector_abstract(paper_info_2['abstract'] + paper_info_2['title'])
-        ans = cosVector(title_vector_1, title_vector_2)
-        result.append(ans)
-        # print("Cos:",ans)
+        tup = (paper_id_1, paper_id_2)
+        result.append(tup)
     except:
         result.append(0)
-    return
 
 
-def add_variate_doc2vec_title(result, paper_info_1, paper_info_2):
-    global model_title
+def add_gensim_title(result, paper_id_1, paper_id_2):
+    global gensim_title
     try:
-        vec1 = paper_info_1['doc2vec1']
-        vec2 = paper_info_2['doc2vec1']
-        # print(len(vec1), len(vec2))
-        ans = cosVector(vec1, vec2)
-        result.append(ans)
+        tup = (paper_id_1, paper_id_2)
+        result.append(tup)
     except:
         result.append(0)
-    return
 
 
-def add_variate_doc2vec_abstract(result, paper_info_1, paper_info_2):
-    global model_abstract
+def add_gensim_abstract(result, paper_id_1, paper_id_2):
+    global gensim_title
     try:
-        vec1 = paper_info_1['doc2vec2']
-        vec2 = paper_info_2['doc2vec2']
-        ans = cosVector(vec1, vec2)
-        # print(len(vec1), len(vec2))
-        result.append(ans)
+        tup = (paper_id_1, paper_id_2)
+        result.append(tup)
     except:
         result.append(0)
-    return
 
 
-def compare_two_paper(paper_info_1, paper_info_2, author_rank):
+def compare_two_paper(docs, paper_id_1, paper_id_2, author_rank):
     result = []
     # the_author_name = paper_info_1['authors'][author_rank]['name']
     # 第一维度
-    add_variate_same_author(result, paper_info_1, paper_info_2)
+
+    add_variate_same_author(result,
+                            docs,
+                            paper_id_1,
+                            paper_id_2)
     # 第二维度：是否来自相同的单位
     # todo : 这里是直接比较相等，其实名称还需要处理一下
-    add_variate_same_org(result, paper_info_1, paper_info_2, author_rank)
+    add_variate_same_org(result,
+                         docs,
+                         paper_id_1,
+                         paper_id_2,
+                         author_rank)
     # 第三维度：是否来自相同的出版
     try:
-        if paper_info_1['venue'] == paper_info_2['venue']:
+        if docs[paper_id_1]['venue'] == docs[paper_id_2]['venue']:
             result.append(1)  # has same venue
         else:
             result.append(0)
@@ -181,14 +126,15 @@ def compare_two_paper(paper_info_1, paper_info_2, author_rank):
         result.append(0)
     # 第四维度：年份
     try:
-        result.append(abs(paper_info_1['year'] - paper_info_2['year']))  # year gap between two papers
+        result.append(abs(docs[paper_id_1]['year'] - docs[paper_id_2]['year']))
+        # year gap between two papers
     except:
         result.append(0)
     # 第五维度：关键词
     try:
         same_keyword = 0
-        for keyword_1 in paper_info_1['keywords']:
-            for keyword_2 in paper_info_2['keywords']:
+        for keyword_1 in docs[paper_id_1]['keywords']:
+            for keyword_2 in docs[paper_id_2]['keywords']:
                 if keyword_1 == keyword_2:
                     # if fp.compare_two_keywords(keyword_1, keyword_2):
                     same_keyword += 1
@@ -202,13 +148,13 @@ def compare_two_paper(paper_info_1, paper_info_2, author_rank):
     except:
         result.append(0)
     # 第六维度 title相似度
-    add_variate_title(result, paper_info_1, paper_info_2)
-    # 第七维度 title+abstract相似度
-    add_variate_title_abstract(result, paper_info_1, paper_info_2)
-    # 第8维：gensim_doc2vec
-    add_variate_doc2vec_title(result, paper_info_1, paper_info_2)
-    # 第9维：gensim_doc2vec
-    add_variate_doc2vec_abstract(result, paper_info_1, paper_info_2)
+    add_nltk_title(result, paper_id_1, paper_id_2)
+    # 第七维度 abstract相似度
+    add_nltk_abstract(result, paper_id_1, paper_id_2)
+    # 第8维：gensim doc2vec
+    add_gensim_title(result, paper_id_1, paper_id_2)
+    # 第9维：gensim doc2vec
+    add_gensim_abstract(result, paper_id_1, paper_id_2)
     return result
 
 
@@ -264,6 +210,9 @@ if __name__ == "__main__":
     train_x = []
     train_y = []
     total = 0
+
+    # 随机种子
+    random.seed(2333)
     for unass_data in tqdm(train_unass_data):
         # print("[Unass_data ", total, "/", len_train_unass_data, "]")
         # total += 1
@@ -271,20 +220,37 @@ if __name__ == "__main__":
         author_rank = int(unass_data[0][9:])
         unass_author_id = unass_data[1]
         unass_paper_info = train_pub[unass_paper_id]
-        the_author_name = unass_paper_info['authors'][author_rank]['name']
-        for same_name_author_id in existing_data_hash_by_name[replace_str(the_author_name)]:
-            one_person_sim_list = []
-
-            for paper_id in existing_data_hash_by_name[replace_str(the_author_name)][same_name_author_id]:
-                one_person_sim_list.append(compare_two_paper(unass_paper_info, train_pub[paper_id], author_rank))
-            # print(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
-            train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
-            # train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list) / 2.0
-                           # + np.max(one_person_sim_list, axis=0) / 2.0)
-            if unass_author_id == same_name_author_id:
+        the_author_name = replace_str(unass_paper_info['authors'][author_rank]['name'])
+        # 正样本：同名作者
+        for same_name_author_id in existing_data_hash_by_name[the_author_name]:
+            if same_name_author_id == unass_author_id:
+                one_person_sim_list = []
+                for paper_id in existing_data_hash_by_name[the_author_name][same_name_author_id]:
+                    one_person_sim_list.append(
+                        compare_two_paper(train_pub,
+                                          unass_paper_id,
+                                          paper_id,
+                                          author_rank))
+                # print(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
+                train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
                 train_y.append(1)
-            else:
+
+        # 随机负样本： 不同id作者
+        while True:
+            same_name_author_id = random.choice(existing_data_hash_by_name)
+            if same_name_author_id != unass_author_id:
+                one_person_sim_list = []
+                for paper_id in existing_data_hash_by_name[the_author_name][same_name_author_id]:
+                    one_person_sim_list.append(
+                        compare_two_paper(train_pub,
+                                          unass_paper_id,
+                                          paper_id,
+                                          author_rank))
+                # print(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
+                train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
                 train_y.append(0)
+                break
+
 
 with open('data/track2/train/train_x.pkl', 'wb') as wb:
     pickle.dump(np.array(train_x), wb)

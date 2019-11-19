@@ -1,0 +1,306 @@
+import nltk
+from nltk.text import TextCollection
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import wordnet
+from nltk.corpus import stopwords
+import string
+import json
+import pickle
+import time
+from tqdm import tqdm
+import gensim
+import random
+from gensim import corpora, models, similarities
+import os
+
+
+
+
+def cosVector(x, y):
+    if len(x) != len(y):
+        print('error input,x and y is not in the same space')
+        return 0
+    result1 = 0.0
+    result2 = 0.0
+    result3 = 0.0
+    for i in range(len(x)):
+        result1 += x[i]*y[i]   #sum(X*Y)
+        result2 += x[i]**2     #sum(X*X)
+        result3 += y[i]**2     #sum(Y*Y)
+    ans = result1/((result2*result3)**0.5)
+    return ans
+
+
+def replace_str(input):
+    return input.strip().replace('_', '').replace('-', '').replace(' ', '').replace('.', '').lower()
+
+
+
+def pre_doc_vector(word_dict, doc):
+    total_word = 0
+    for word in doc.split():
+        if word not in word_dict:
+            word_dict[word] = total_word
+            total_word += 1
+
+
+def get_doc_vector(word_dict, corpus, doc):
+    dict_size = len(word_dict)
+    doc_vector = [0 for i in range(dict_size)]
+    words = list(set(doc.split()))
+    for word in words:
+        word_index = word_dict[word]
+        doc_vector[word_index] = corpus.tf_idf(word, doc)
+    return doc_vector
+
+
+def add_variate_doc2vec_title(result, paper_info_1, paper_info_2):
+    global model_title
+    try:
+        vec1 = paper_info_1['doc2vec1']
+        vec2 = paper_info_2['doc2vec1']
+        # print(len(vec1), len(vec2))
+        ans = cosVector(vec1, vec2)
+        result.append(ans)
+    except:
+        result.append(0)
+    return
+
+
+def add_variate_doc2vec_abstract(result, paper_info_1, paper_info_2):
+    global model_abstract
+    try:
+        vec1 = paper_info_1['doc2vec2']
+        vec2 = paper_info_2['doc2vec2']
+        ans = cosVector(vec1, vec2)
+        # print(len(vec1), len(vec2))
+        result.append(ans)
+    except:
+        result.append(0)
+    return
+
+
+# ====================================
+# nltk
+# ====================================
+
+def add_nltk_title(result, corpus, docs, paper_id_1, paper_id_2):
+    tup = (paper_id_1, paper_id_2)
+    try:
+        word_dict = {}
+        pre_doc_vector(word_dict, docs[paper_id_1]['title'] + docs[paper_id_2]['title'])
+        vector_1 = get_doc_vector(word_dict, corpus, docs[paper_id_1]['title'])
+        vector_2 = get_doc_vector(word_dict, corpus, docs[paper_id_2]['title'])
+        ans = cosVector(vector_1, vector_2)
+        tup = (paper_id_1, paper_id_2)
+        result[tup] = ans
+    except:
+        result[tup] = 0
+
+
+def add_nltk_abstract(result, corpus, docs, paper_id_1, paper_id_2):
+    tup = (paper_id_1, paper_id_2)
+    try:
+        word_dict = {}
+        pre_doc_vector(word_dict, docs[paper_id_1]['title'] + docs[paper_id_1]['abstract']
+                        + docs[paper_id_2]['title'] +docs[paper_id_2]['abstract'])
+        vector_1 = get_doc_vector(word_dict, corpus, docs[paper_id_1]['title'] + docs[paper_id_1]['abstract'])
+        vector_2 = get_doc_vector(word_dict, corpus, docs[paper_id_2]['title'] + docs[paper_id_2]['abstract'])
+        ans = cosVector(vector_1, vector_2)
+        result[tup] = ans
+        # print("Cos:",ans)
+    except:
+        result[tup] = 0
+
+
+def nltk_calc_two_paper(corpus_title, corpus_abstract,
+                        result_title, result_abstract,
+                        docs, paper_id_1, paper_id_2):
+    add_nltk_title(result_title, corpus_title, docs, paper_id_1, paper_id_2)
+    add_nltk_abstract(result_abstract, corpus_abstract, docs, paper_id_1, paper_id_2)
+
+
+
+def nltk_idf(docs, data_dir):
+    print("[train nltk]")
+    whole_title = []
+    whole_abstract = []
+    for data in tqdm(docs):
+        if 'title' in docs[data]:
+            whole_title.append(docs[data]['title'])
+        if 'abstract' in docs[data]:
+            whole_abstract.append(docs[data]['abstract'])
+    # if_idf = if * idf 出现在越多的文档里的词越不重要
+    # Question : 这个if_idf要不要按照作者分？
+    corpus_title = TextCollection(whole_title)
+    with open(data_dir+'title.model', 'wb') as model_tf_idf:
+        pickle.dump(corpus_title, model_tf_idf)
+    print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish title pickle ]")
+
+    corpus_title_abstract = TextCollection(whole_abstract)
+    with open(data_dir+'abstract.model', 'wb') as model_tf_idf2:
+        pickle.dump(corpus_title_abstract, model_tf_idf2)
+    print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish abstract pickle ]")
+
+
+def nltk_tf(unass_data, existing_data, pub, data_model_dir, data_result_dir):
+    existing_data_hash_by_name = {}
+    for person_id in existing_data:
+        real_name = existing_data[person_id]['name']
+        replaced_real_name = replace_str(real_name)
+        if replaced_real_name not in existing_data_hash_by_name:
+            existing_data_hash_by_name[replaced_real_name] = {}
+        existing_data_hash_by_name[replaced_real_name][person_id] = existing_data[person_id]['papers']
+    with open(data_model_dir+'title.model', 'rb') as model_title:
+        corpus_title = pickle.load(model_title)
+    with open(data_model_dir+'abstract.model', 'rb') as model_abstract:
+        corpus_abstract = pickle.dump(model_abstract)
+
+    random.seed(2333)
+    total = 0
+    result_title = dict(),
+    result_abstract = dict(),
+    for unass_data in tqdm(unass_data):
+        unass_paper_id = unass_data[0][:8]
+        author_rank = int(unass_data[0][9:])
+        unass_author_id = unass_data[1]
+        unass_paper_info = pub[unass_paper_id]
+        the_author_name = replace_str(unass_paper_info['authors'][author_rank]['name'])
+        # 正样本：同名作者
+        for same_name_author_id in existing_data_hash_by_name[the_author_name]:
+            if same_name_author_id == unass_author_id:
+                one_person_sim_list = []
+                for paper_id in existing_data_hash_by_name[the_author_name][same_name_author_id]:
+                    one_person_sim_list.append(
+                        nltk_calc_two_paper(corpus_title,
+                                            corpus_abstract,
+                                            result_title,
+                                            result_abstract,
+                                            pub,
+                                            unass_paper_id,
+                                            paper_id))
+
+        # 随机负样本： 不同id作者
+        while True:
+            same_name_author_id = random.choice(existing_data_hash_by_name)
+            if same_name_author_id != unass_author_id:
+                one_person_sim_list = []
+                for paper_id in existing_data_hash_by_name[the_author_name][same_name_author_id]:
+                    one_person_sim_list.append(
+                        nltk_calc_two_paper(corpus_title,
+                                            corpus_abstract,
+                                            result_title,
+                                            result_abstract,
+                                            pub,
+                                            unass_paper_id,
+                                            paper_id))
+                break
+        total += 1
+        if total > 100:
+            break
+    print(result_title)
+    print(result_abstract)
+    with open(data_result_dir+'title.model', 'wb') as fresult_title:
+        pickle.dump(fresult_title, result_title)
+    with open(data_result_dir+'abstract.model', 'wb') as fresult_abstract:
+        pickle.dump(fresult_abstract, result_abstract)
+    return
+
+
+def train_nltk_model(file_name_unass_data, file_name_existing_data, file_name_pub, file_name_out):
+    if os.path.exists(file_name_out+'result_title.model'):
+        return
+    with open(file_name_unass_data, 'r') as r:
+        unass_data = json.load(r)
+    with open(file_name_existing_data, 'r') as r:
+        existing_data = json.load(r)
+    with open(file_name_pub, 'r') as r:
+        pub = json.load(r)
+    data_model_dir = file_name_out + 'model_'
+    # 训练模型
+    nltk_idf(pub, data_model_dir)
+    # 预处理出结果,get_train_data阶段可以直接用
+    data_result_dir = file_name_out + 'model_'
+    nltk_tf(unass_data, existing_data, pub, data_model_dir, data_result_dir)
+
+
+# ========================================================
+# Gensim
+# doc2vec
+def gensim_doc2vec(docs, data_dir):
+    print("[train gensim]")
+    whole_title = []
+    whole_abstract = []
+    for data in tqdm(docs):
+        if 'title' in docs[data]:
+            whole_title.append(docs[data]['title'])
+        if 'abstract' in docs[data]:
+            whole_abstract.append(docs[data]['abstract'])
+
+    # 训练 title
+    title_x_train = []
+    for i, doc in tqdm(enumerate(whole_title)):
+        word_list = doc.split(' ')
+        document = gensim.models.doc2vec.TaggedDocument(word_list, tags=[i])
+        title_x_train.append(document)
+    model_title = gensim.models.doc2vec.Doc2Vec(vector_size=256, window=10, min_count=5,
+                                  workers=4, alpha=0.025, min_alpha=0.025, epochs=12)
+    model_title.build_vocab(title_x_train)
+    print("开始训练title...")
+    model_title.train(title_x_train, total_examples=model_title.corpus_count, epochs=12)
+    model_title.save(data_dir+"title.model")
+    print("title model saved")
+
+    # 训练abstract
+    abstract_x_train = []
+    for i, doc in tqdm(enumerate(whole_abstract)):
+        word_list = doc.split(' ')
+        document = gensim.models.doc2vec.TaggedDocument(word_list, tags=[i])
+        abstract_x_train.append(document)
+    model_abstract = gensim.models.doc2vec.Doc2Vec(vector_size=256, window=10, min_count=5,
+                                                workers=4, alpha=0.025, min_alpha=0.025, epochs=12)
+    model_abstract.build_vocab(abstract_x_train)
+    print("开始训练abstract...")
+    # 训练模型
+    model_abstract.train(abstract_x_train, total_examples=model_abstract.corpus_count, epochs=12)
+    model_abstract.save(data_dir + "abstract.model")
+    print("abstract model saved")
+    # test_text = whole_title[0].split()
+    # inferred_vector_dm = model_title.infer_vector(test_text)
+    # print(inferred_vector_dm)
+    # sims = model_title.docvecs.most_similar([inferred_vector_dm], topn=10)
+
+
+def train_gensim_model(file_name_unass_data, file_name_existing_data, file_name_pub, file_name_out):
+    # if os.path.exists(file_name_out+'map_title.model'):
+    #     return
+    with open(file_name_unass_data, 'r') as r:
+        unass_data = json.load(r)
+    with open(file_name_existing_data, 'r') as r:
+        existing_data = json.load(r)
+    with open(file_name_pub, 'r') as r:
+        pub = json.load(r)
+    return
+
+
+if __name__ == "__main__":
+    file_name_unass_data = 'data/track2/train/train_unass_data.json'
+    file_name_existing_data = 'data/track2/train/train_existing_data.json'
+    file_name_pub = 'data/track2/train/train_pub_alter.json'
+    train_nltk = True
+    if train_nltk:
+        out_file_name = 'data/track2/train/train_pub_nltk_'
+        train_nltk_model(file_name_unass_data,
+                         file_name_existing_data,
+                         file_name_pub,
+                         out_file_name)
+    # file_name_unass_data = 'data/track2/train/train_unass_data.json'
+    # file_name_existing_data = 'data/track2/train/train_existing_data.json'
+    # file_name_pub = 'data/track2/train/train_pub.json'
+    # train_gensim = False
+    # if train_gensim:
+    #     out_file_name = 'data/track2/train/train_pub_gensim_'
+    #     train_gensim_model(file_name_unass_data,
+    #                        file_name_existing_data,
+    #                        file_name_pub,
+    #                        out_file_name)
