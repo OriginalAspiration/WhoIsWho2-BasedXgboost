@@ -14,7 +14,7 @@ import numpy as np
 from tqdm import tqdm
 
 
-global word_dict, word_dict_abstract, corpus_title, corpus_abstract, model_title, model_abstract
+global corpus_title, corpus_abstract, model_title, model_abstract
 
 # 返回一个五维向量:
 # [ x1, x2, x3, x4, x5, ...]
@@ -65,7 +65,7 @@ def add_variate_same_author(result, paper_info_1, paper_info_2):
         result.append(0)
 
 
-def add_variate_same_org(result, paper_info_1, paper_info_2):
+def add_variate_same_org(result, paper_info_1, paper_info_2, author_rank):
     try:
         same_org = 0
         for author_2 in paper_info_2['authors']:
@@ -170,7 +170,7 @@ def compare_two_paper(paper_info_1, paper_info_2, author_rank):
     add_variate_same_author(result, paper_info_1, paper_info_2)
     # 第二维度：是否来自相同的单位
     # todo : 这里是直接比较相等，其实名称还需要处理一下
-    add_variate_same_org(result, paper_info_1, paper_info_2)
+    add_variate_same_org(result, paper_info_1, paper_info_2, author_rank)
     # 第三维度：是否来自相同的出版
     try:
         if paper_info_1['venue'] == paper_info_2['venue']:
@@ -278,9 +278,9 @@ if __name__ == "__main__":
             for paper_id in existing_data_hash_by_name[replace_str(the_author_name)][same_name_author_id]:
                 one_person_sim_list.append(compare_two_paper(unass_paper_info, train_pub[paper_id], author_rank))
             # print(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
-            # train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
-            train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list)
-                           + np.max(one_person_sim_list, axis=0))
+            train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
+            # train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list) / 2.0
+                           # + np.max(one_person_sim_list, axis=0) / 2.0)
             if unass_author_id == same_name_author_id:
                 train_y.append(1)
             else:

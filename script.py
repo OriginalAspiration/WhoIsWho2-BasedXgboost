@@ -88,6 +88,7 @@ if __name__ == "__main__":
     result_dict = {}
     error_times = 0
     bst = xgb.Booster(model_file='xgb_1.model')
+    print("Length ", len(cna_valid_unass_competition))
     for index, unass_data in tqdm(enumerate(cna_valid_unass_competition)):
         unass_paper_id = unass_data[:8]
         author_rank = int(unass_data[9:])
