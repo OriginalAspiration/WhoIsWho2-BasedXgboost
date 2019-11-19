@@ -8,6 +8,12 @@ import json
 import pickle
 import time
 from tqdm import tqdm
+import gensim
+from gensim import corpora, models, similarities
+
+
+global whole_title
+global whole_title_abstract
 
 
 def get_wordnet_pos(word):
@@ -59,6 +65,7 @@ def transform_sentence(doc):
 
 
 def transform_pub(cna_pub):
+    global whole_title,whole_title_abstract
     whole_title = []
     total_word_title = 0
     whole_title_abstract = []
@@ -99,57 +106,69 @@ def transform_pub(cna_pub):
     with open('data/track2/train/train_pub_alter.json', 'w', encoding='utf-8') as w:
         w.write(json.dumps(cna_pub))
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish lemma ]")
+
+
+def nltk_tf_idf():
+    global whole_title, whole_title_abstract
     # if_idf = if * idf 出现在越多的文档里的词越不重要
     # Question : 这个if_idf要不要按照作者分？
     corpus_title = TextCollection(whole_title)
     with open('data/track2/train/train_tf_idf.txt', 'wb') as model_tf_idf:
         pickle.dump(corpus_title, model_tf_idf)
-    # eps = 0.0       # 单词频率精度
-    # word_dict = {}
-    # for sentence in tqdm(whole_title):
-    #     for word in sentence.split():
-    #         if (corpus_title.idf(word) > eps) and (word not in word_dict):
-    #             word_dict[word] = total_word_title
-    #             total_word_title += 1
-    #
-    # with open('data/track2/train/train_word_dict.txt', 'wb') as word_file:
-    #     pickle.dump(word_dict, word_file)
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish title pickle ]")
+
     corpus_title_abstract = TextCollection(whole_title_abstract)
     with open('data/track2/train/train_abstract_tf_idf.txt', 'wb') as model_tf_idf2:
         pickle.dump(corpus_title_abstract, model_tf_idf2)
-    # word_dict_abstract = {}
-    # ftotal = [0, 0, 0, 0, 0]
-    # feps = [0.01, 0.001, 0.0001, 0.00001, 0.000001]
-    # for sentence in tqdm(whole_title_abstract):
-    #     for word in sentence.split():
-    #         if (corpus_title_abstract.idf(word) > eps) and (word not in word_dict_abstract):
-    #             now = corpus_title_abstract.idf(word)
-    #             for i in range(5):
-    #                 if now >= feps[i]:
-    #                     ftotal[i] += 1
-    #             word_dict_abstract[word] = total_word_abstract
-    #             total_word_abstract += 1
-    # with open('data/track2/train/train_abstract_word_dict.txt', 'wb') as word_file2:
-    #     pickle.dump(word_dict_abstract, word_file2)
-    # print("Length of Word_abstract:", len(word_dict_abstract))
-    # print("Length of Word_title:", len(word_dict))
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish abstract pickle ]")
-    # for i in range(5):
-    #     print("Eps ", feps[i], 'Cnt ', ftotal[i])
-    #
-    # doc_1 = whole_title[1]
-    # doc_2 = whole_title[2]
-    # dict_size = len(word_dict)
-    # doc_vector_1 = [0 for i in range(dict_size)]
-    # for word in doc_1.split():
-    #     word_index = word_dict[word]
-    #     doc_vector_1[word_index] = corpus_title.tf_idf(word, doc_1)
-    # doc_vector_2 = [0 for i in range(dict_size)]
-    # for word in doc_2.split():
-    #     word_index = word_dict[word]
-    #     doc_vector_2[word_index] = corpus_title.tf_idf(word, doc_2)
-    # cosVector(doc_vector_1, doc_vector_2)
+
+
+# gensim lsi
+
+
+# doc2vec
+def gensim_doc2vec():
+    global whole_title, whole_title_abstract
+    data_dir = "data/track2/train/gensim_doc2vec_"
+    data = []
+
+    title_x_train = []
+    for i, doc in tqdm(enumerate(whole_title)):
+        word_list = doc.split(' ')
+        document = gensim.models.doc2vec.TaggedDocument(word_list, tags=[i])
+        title_x_train.append(document)
+    # 训练 Doc2Vec，并保存模型：
+    # 实例化一个模型
+    model_title = gensim.models.doc2vec.Doc2Vec(vector_size=256, window=10, min_count=5,
+                                  workers=4, alpha=0.025, min_alpha=0.025, epochs=12)
+    model_title.build_vocab(title_x_train)
+    print("开始训练...")
+    # 训练模型
+    model_title.train(title_x_train, total_examples=model_title.corpus_count, epochs=12)
+    model_title.save(data_dir+"title.model")
+    print("title model saved")
+
+    abstract_x_train = []
+    for i, doc in tqdm(enumerate(whole_title_abstract)):
+        word_list = doc.split(' ')
+        document = gensim.models.doc2vec.TaggedDocument(word_list, tags=[i])
+        abstract_x_train.append(document)
+    # 训练 Doc2Vec，并保存模型：
+    # 实例化一个模型
+    model_abstract = gensim.models.doc2vec.Doc2Vec(vector_size=256, window=10, min_count=5,
+                                                workers=4, alpha=0.025, min_alpha=0.025, epochs=12)
+    model_abstract.build_vocab(abstract_x_train)
+    print("开始训练...")
+    # 训练模型
+    model_abstract.train(abstract_x_train, total_examples=model_abstract.corpus_count, epochs=12)
+    model_abstract.save(data_dir + "abstract.model")
+    print("abstract model saved")
+
+    test_text = whole_title[0].split()
+    inferred_vector_dm = model_title.infer_vector(test_text)
+    print(inferred_vector_dm)
+    sims = model_title.docvecs.most_similar([inferred_vector_dm], topn=10)
+
 
 
 if __name__ == '__main__':
@@ -157,6 +176,8 @@ if __name__ == '__main__':
         train_pub = json.load(r)
         print(len(train_pub))
         transform_pub(train_pub)
+        # nltk_tf_idf(train_pub)
+        gensim_doc2vec()
         # pre_tf_idf(train_pub)
 
 

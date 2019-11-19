@@ -8,12 +8,13 @@ from nltk.corpus import stopwords
 import string
 import json
 import pickle
+import gensim
 
 import numpy as np
 from tqdm import tqdm
 
 
-global word_dict, word_dict_abstract, corpus_title, corpus_abstract
+global word_dict, word_dict_abstract, corpus_title, corpus_abstract, model_title, model_abstract
 
 # 返回一个五维向量:
 # [ x1, x2, x3, x4, x5, ...]
@@ -120,8 +121,8 @@ def add_variate_title(result, paper_info_1, paper_info_2):
     except:
         result.append(0)
     return
-#
-#
+
+
 def add_variate_title_abstract(result, paper_info_1, paper_info_2):
     try:
         pre_doc_vector_(paper_info_1['title'] + paper_info_1['abstract']
@@ -131,6 +132,32 @@ def add_variate_title_abstract(result, paper_info_1, paper_info_2):
         ans = cosVector(title_vector_1, title_vector_2)
         result.append(ans)
         # print("Cos:",ans)
+    except:
+        result.append(0)
+    return
+
+
+def add_variate_doc2vec_title(result, paper_info_1, paper_info_2):
+    global model_title
+    try:
+        vec1 = paper_info_1['doc2vec1']
+        vec2 = paper_info_2['doc2vec1']
+        # print(len(vec1), len(vec2))
+        ans = cosVector(vec1, vec2)
+        result.append(ans)
+    except:
+        result.append(0)
+    return
+
+
+def add_variate_doc2vec_abstract(result, paper_info_1, paper_info_2):
+    global model_abstract
+    try:
+        vec1 = paper_info_1['doc2vec2']
+        vec2 = paper_info_2['doc2vec2']
+        ans = cosVector(vec1, vec2)
+        # print(len(vec1), len(vec2))
+        result.append(ans)
     except:
         result.append(0)
     return
@@ -178,6 +205,10 @@ def compare_two_paper(paper_info_1, paper_info_2, author_rank):
     add_variate_title(result, paper_info_1, paper_info_2)
     # 第七维度 title+abstract相似度
     add_variate_title_abstract(result, paper_info_1, paper_info_2)
+    # 第8维：gensim_doc2vec
+    add_variate_doc2vec_title(result, paper_info_1, paper_info_2)
+    # 第9维：gensim_doc2vec
+    add_variate_doc2vec_abstract(result, paper_info_1, paper_info_2)
     return result
 
 
@@ -200,6 +231,17 @@ def load_nltk_result():
     # print(word_dict_abstract)
 
 
+def load_gensim_result(train_pub):
+    global model_title, model_abstract
+    data_dir = "data/track2/train/gensim_doc2vec_"
+    model_title = gensim.models.doc2vec.Doc2Vec.load(data_dir + "title.model")
+    model_abstract = gensim.models.doc2vec.Doc2Vec.load(data_dir + "abstract.model")
+    for data in tqdm(train_pub):
+        train_pub[data]['doc2vec1'] = model_title.infer_vector(train_pub[data]['title'].split())
+        train_pub[data]['doc2vec2'] = model_abstract.infer_vector(
+            (train_pub[data]['title']+train_pub[data]['abstract']).split())
+
+
 if __name__ == "__main__":
     with open('data/track2/train/train_unass_data.json', 'r') as r:
         train_unass_data = json.load(r)
@@ -208,6 +250,7 @@ if __name__ == "__main__":
     with open('data/track2/train/train_pub_alter.json', 'r') as r:
         train_pub = json.load(r)
     load_nltk_result()
+    load_gensim_result(train_pub)
     existing_data_hash_by_name = {}
     for person_id in train_existing_data:
         real_name = train_existing_data[person_id]['name']
@@ -231,10 +274,13 @@ if __name__ == "__main__":
         the_author_name = unass_paper_info['authors'][author_rank]['name']
         for same_name_author_id in existing_data_hash_by_name[replace_str(the_author_name)]:
             one_person_sim_list = []
+
             for paper_id in existing_data_hash_by_name[replace_str(the_author_name)][same_name_author_id]:
                 one_person_sim_list.append(compare_two_paper(unass_paper_info, train_pub[paper_id], author_rank))
             # print(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
-            train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
+            # train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
+            train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list)
+                           + np.max(one_person_sim_list, axis=0))
             if unass_author_id == same_name_author_id:
                 train_y.append(1)
             else:

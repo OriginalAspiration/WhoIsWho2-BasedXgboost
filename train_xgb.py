@@ -49,7 +49,8 @@ tar = xgb.Booster(model_file='xgb_1.model')
 ypred=tar.predict(dtest)
  
 # 设置阈值, 输出一些评价指标，选择概率大于0.5的为1，其他为0类
-y_pred = (ypred >= 0.3)*1
+# y_pred = (ypred >= 0.3)*1
+y_pred = (ypred >= 0.5)*1
  
 from sklearn import metrics
 print ('AUC: %.4f' % metrics.roc_auc_score(test_y,ypred))
