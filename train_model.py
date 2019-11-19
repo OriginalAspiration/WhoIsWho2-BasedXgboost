@@ -35,10 +35,11 @@ def replace_str(input):
     return input.strip().replace('_', '').replace('-', '').replace(' ', '').replace('.', '').lower()
 
 
-
 def pre_doc_vector(word_dict, doc):
     total_word = 0
-    for word in doc.split():
+    # print(doc)
+    words = list(set(doc.split()))
+    for word in words:
         if word not in word_dict:
             word_dict[word] = total_word
             total_word += 1
@@ -49,6 +50,7 @@ def get_doc_vector(word_dict, corpus, doc):
     doc_vector = [0 for i in range(dict_size)]
     words = list(set(doc.split()))
     for word in words:
+        # print(word)
         word_index = word_dict[word]
         doc_vector[word_index] = corpus.tf_idf(word, doc)
     return doc_vector
@@ -88,7 +90,7 @@ def add_nltk_title(result, corpus, docs, paper_id_1, paper_id_2):
     tup = (paper_id_1, paper_id_2)
     try:
         word_dict = {}
-        pre_doc_vector(word_dict, docs[paper_id_1]['title'] + docs[paper_id_2]['title'])
+        pre_doc_vector(word_dict, docs[paper_id_1]['title'] + ' ' + docs[paper_id_2]['title'])
         vector_1 = get_doc_vector(word_dict, corpus, docs[paper_id_1]['title'])
         vector_2 = get_doc_vector(word_dict, corpus, docs[paper_id_2]['title'])
         ans = cosVector(vector_1, vector_2)
@@ -102,10 +104,10 @@ def add_nltk_abstract(result, corpus, docs, paper_id_1, paper_id_2):
     tup = (paper_id_1, paper_id_2)
     try:
         word_dict = {}
-        pre_doc_vector(word_dict, docs[paper_id_1]['title'] + docs[paper_id_1]['abstract']
-                        + docs[paper_id_2]['title'] +docs[paper_id_2]['abstract'])
-        vector_1 = get_doc_vector(word_dict, corpus, docs[paper_id_1]['title'] + docs[paper_id_1]['abstract'])
-        vector_2 = get_doc_vector(word_dict, corpus, docs[paper_id_2]['title'] + docs[paper_id_2]['abstract'])
+        pre_doc_vector(word_dict, docs[paper_id_1]['title'] + ' ' + docs[paper_id_1]['abstract']
+                        + ' ' + docs[paper_id_2]['title'] + ' ' + docs[paper_id_2]['abstract'])
+        vector_1 = get_doc_vector(word_dict, corpus, docs[paper_id_1]['title'] + ' ' + docs[paper_id_1]['abstract'])
+        vector_2 = get_doc_vector(word_dict, corpus, docs[paper_id_2]['title'] + ' ' + docs[paper_id_2]['abstract'])
         ans = cosVector(vector_1, vector_2)
         result[tup] = ans
         # print("Cos:",ans)
@@ -154,7 +156,7 @@ def nltk_tf(unass_data, existing_data, pub, data_model_dir, data_result_dir):
     with open(data_model_dir+'title.model', 'rb') as model_title:
         corpus_title = pickle.load(model_title)
     with open(data_model_dir+'abstract.model', 'rb') as model_abstract:
-        corpus_abstract = pickle.dump(model_abstract)
+        corpus_abstract = pickle.load(model_abstract)
 
     random.seed(2333)
     total = 0
