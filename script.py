@@ -123,9 +123,10 @@ def compare_two_paper(paper_info_1, paper_info_2, author_rank):
     same_org = 0
     for author_2 in paper_info_2['authors']:
         if author_2['name'] == the_author_name:
-            if author_2['org'] == paper_info_1['authors'][author_rank]['org']:
-                same_org += 1
-                break
+            if ('org' in author_2) and ('org' in paper_info_1['authors'][author_rank]):
+                if author_2['org'] == paper_info_1['authors'][author_rank]['org']:
+                    same_org += 1
+                    break
     if same_org >= 1:
         result.append(1)  # has same org
     else:

@@ -353,7 +353,7 @@ def gensim_result(unass_data, existing_data, pub, data_model_dir, data_result_di
         total += 1
         if total == 100:
             break
-    print(len(result_title), type(result_title))
+    print(len(result_title))
     with open(data_result_dir+'title.json', 'wb') as fresult_title:
         pickle.dump(result_title, fresult_title)
         fresult_title.close()
