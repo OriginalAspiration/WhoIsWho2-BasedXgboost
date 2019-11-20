@@ -14,8 +14,6 @@ from gensim import corpora, models, similarities
 import os
 
 
-
-
 def cosVector(x, y):
     if len(x) != len(y):
         print('error input,x and y is not in the same space')
@@ -35,6 +33,9 @@ def replace_str(input):
     return input.strip().replace('_', '').replace('-', '').replace(' ', '').replace('.', '').lower()
 
 
+# ====================================
+# nltk
+# ====================================
 def pre_doc_vector(word_dict, doc):
     total_word = 0
     # print(doc)
@@ -56,36 +57,6 @@ def get_doc_vector(word_dict, corpus, doc):
     return doc_vector
 
 
-def add_variate_doc2vec_title(result, paper_info_1, paper_info_2):
-    global model_title
-    try:
-        vec1 = paper_info_1['doc2vec1']
-        vec2 = paper_info_2['doc2vec1']
-        # print(len(vec1), len(vec2))
-        ans = cosVector(vec1, vec2)
-        result.append(ans)
-    except:
-        result.append(0)
-    return
-
-
-def add_variate_doc2vec_abstract(result, paper_info_1, paper_info_2):
-    global model_abstract
-    try:
-        vec1 = paper_info_1['doc2vec2']
-        vec2 = paper_info_2['doc2vec2']
-        ans = cosVector(vec1, vec2)
-        # print(len(vec1), len(vec2))
-        result.append(ans)
-    except:
-        result.append(0)
-    return
-
-
-# ====================================
-# nltk
-# ====================================
-
 def add_nltk_title(result, corpus, docs, paper_id_1, paper_id_2):
     tup = (paper_id_1, paper_id_2)
     try:
@@ -94,7 +65,6 @@ def add_nltk_title(result, corpus, docs, paper_id_1, paper_id_2):
         vector_1 = get_doc_vector(word_dict, corpus, docs[paper_id_1]['title'])
         vector_2 = get_doc_vector(word_dict, corpus, docs[paper_id_2]['title'])
         ans = cosVector(vector_1, vector_2)
-        tup = (paper_id_1, paper_id_2)
         result[tup] = ans
     except:
         result[tup] = 0
@@ -122,8 +92,9 @@ def nltk_calc_two_paper(corpus_title, corpus_abstract,
     add_nltk_abstract(result_abstract, corpus_abstract, docs, paper_id_1, paper_id_2)
 
 
-
 def nltk_idf(docs, data_dir):
+    if os.path.exists(data_dir+'title.model'):
+        return
     print("[train nltk]")
     whole_title = []
     whole_abstract = []
@@ -139,13 +110,15 @@ def nltk_idf(docs, data_dir):
         pickle.dump(corpus_title, model_tf_idf)
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish title pickle ]")
 
-    corpus_title_abstract = TextCollection(whole_abstract)
+    corpus_abstract = TextCollection(whole_abstract)
     with open(data_dir+'abstract.model', 'wb') as model_tf_idf2:
-        pickle.dump(corpus_title_abstract, model_tf_idf2)
+        pickle.dump(corpus_abstract, model_tf_idf2)
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish abstract pickle ]")
 
 
 def nltk_tf(unass_data, existing_data, pub, data_model_dir, data_result_dir):
+    if os.path.exists(data_result_dir+'title.json'):
+        return
     existing_data_hash_by_name = {}
     for person_id in existing_data:
         real_name = existing_data[person_id]['name']
@@ -160,8 +133,8 @@ def nltk_tf(unass_data, existing_data, pub, data_model_dir, data_result_dir):
 
     random.seed(2333)
     total = 0
-    result_title = dict(),
-    result_abstract = dict(),
+    result_title = {}
+    result_abstract = {}
     for unass_data in tqdm(unass_data):
         unass_paper_id = unass_data[0][:8]
         author_rank = int(unass_data[0][9:])
@@ -169,6 +142,7 @@ def nltk_tf(unass_data, existing_data, pub, data_model_dir, data_result_dir):
         unass_paper_info = pub[unass_paper_id]
         the_author_name = replace_str(unass_paper_info['authors'][author_rank]['name'])
         # 正样本：同名作者
+        # print("\n", existing_data_hash_by_name[the_author_name])
         for same_name_author_id in existing_data_hash_by_name[the_author_name]:
             if same_name_author_id == unass_author_id:
                 one_person_sim_list = []
@@ -181,31 +155,33 @@ def nltk_tf(unass_data, existing_data, pub, data_model_dir, data_result_dir):
                                             pub,
                                             unass_paper_id,
                                             paper_id))
+                break
 
         # 随机负样本： 不同id作者
-        while True:
-            same_name_author_id = random.choice(existing_data_hash_by_name)
-            if same_name_author_id != unass_author_id:
-                one_person_sim_list = []
-                for paper_id in existing_data_hash_by_name[the_author_name][same_name_author_id]:
-                    one_person_sim_list.append(
-                        nltk_calc_two_paper(corpus_title,
-                                            corpus_abstract,
-                                            result_title,
-                                            result_abstract,
-                                            pub,
-                                            unass_paper_id,
-                                            paper_id))
-                break
-        total += 1
-        if total > 100:
-            break
-    print(result_title)
-    print(result_abstract)
-    with open(data_result_dir+'title.model', 'wb') as fresult_title:
-        pickle.dump(fresult_title, result_title)
+        if len(existing_data_hash_by_name[the_author_name]) > 1:
+            diff_name_author_id = list(existing_data_hash_by_name[the_author_name])
+            diff_name_author_id.remove(unass_author_id)
+            print(diff_name_author_id)
+            same_name_author_id = random.choice(diff_name_author_id)
+            one_person_sim_list = []
+            for paper_id in existing_data_hash_by_name[the_author_name][same_name_author_id]:
+                one_person_sim_list.append(
+                    nltk_calc_two_paper(corpus_title,
+                                        corpus_abstract,
+                                        result_title,
+                                        result_abstract,
+                                        pub,
+                                        unass_paper_id,
+                                        paper_id))
+        # total += 1
+        # if total > 100:
+        #     break
+    print(len(result_title))
+    print(len(result_abstract))
+    with open(data_result_dir+'title.json', 'wb') as fresult_title:
+        fresult_title.write(json.dumps(result_title))
     with open(data_result_dir+'abstract.model', 'wb') as fresult_abstract:
-        pickle.dump(fresult_abstract, result_abstract)
+        fresult_abstract.write(json.dumps(result_abstract))
     return
 
 
@@ -222,14 +198,16 @@ def train_nltk_model(file_name_unass_data, file_name_existing_data, file_name_pu
     # 训练模型
     nltk_idf(pub, data_model_dir)
     # 预处理出结果,get_train_data阶段可以直接用
-    data_result_dir = file_name_out + 'model_'
+    data_result_dir = file_name_out + 'result_'
     nltk_tf(unass_data, existing_data, pub, data_model_dir, data_result_dir)
 
 
 # ========================================================
 # Gensim
 # doc2vec
-def gensim_doc2vec(docs, data_dir):
+# ========================================================
+
+def gensim_train(docs, data_dir):
     print("[train gensim]")
     whole_title = []
     whole_abstract = []
@@ -267,10 +245,102 @@ def gensim_doc2vec(docs, data_dir):
     model_abstract.train(abstract_x_train, total_examples=model_abstract.corpus_count, epochs=12)
     model_abstract.save(data_dir + "abstract.model")
     print("abstract model saved")
-    # test_text = whole_title[0].split()
-    # inferred_vector_dm = model_title.infer_vector(test_text)
-    # print(inferred_vector_dm)
-    # sims = model_title.docvecs.most_similar([inferred_vector_dm], topn=10)
+
+
+def add_gensim_title(result, corpus, docs, paper_id_1, paper_id_2):
+    tup = (paper_id_1, paper_id_2)
+    try:
+        vec1 = docs[paper_id_1]['doc2vec1']
+        vec2 = docs[paper_id_1]['doc2vec1']
+        # print(len(vec1), len(vec2))
+        ans = cosVector(vec1, vec2)
+        result[tup] = ans
+    except:
+        result[tup] = 0
+
+
+def add_gensim_abstract(result, corpus, docs, paper_id_1, paper_id_2):
+    tup = (paper_id_1, paper_id_2)
+    try:
+        vec1 = docs[paper_id_1]['doc2vec2']
+        vec2 = docs[paper_id_1]['doc2vec2']
+        # print(len(vec1), len(vec2))
+        ans = cosVector(vec1, vec2)
+        result[tup] = ans
+    except:
+        result[tup] = 0
+
+
+def gensim_calc_two_paper(result_title, result_abstract,
+                          docs, paper_id_1, paper_id_2):
+    add_gensim_title(result_title, docs, paper_id_1, paper_id_2)
+    add_gensim_abstract(result_abstract, docs, paper_id_1, paper_id_2)
+
+
+def gensim_result(unass_data, existing_data, pub, data_model_dir, data_result_dir):
+    if os.path.exists(data_result_dir+'title.json'):
+        return
+    existing_data_hash_by_name = {}
+    for person_id in existing_data:
+        real_name = existing_data[person_id]['name']
+        replaced_real_name = replace_str(real_name)
+        if replaced_real_name not in existing_data_hash_by_name:
+            existing_data_hash_by_name[replaced_real_name] = {}
+        existing_data_hash_by_name[replaced_real_name][person_id] = existing_data[person_id]['papers']
+    model_title = gensim.models.doc2vec.Doc2Vec.load(data_model_dir + "title.model")
+    model_abstract = gensim.models.doc2vec.Doc2Vec.load(data_model_dir + "abstract.model")
+    for data in tqdm(pub):
+        pub[data]['doc2vec1'] = model_title.infer_vector(pub[data]['title'].split())
+        pub[data]['doc2vec2'] = model_abstract.infer_vector(
+            (pub[data]['title'] + ' ' + pub[data]['abstract']).split())
+
+    random.seed(2333)
+    result_title = {}
+    result_abstract = {}
+    for unass_data in tqdm(unass_data):
+        unass_paper_id = unass_data[0][:8]
+        author_rank = int(unass_data[0][9:])
+        unass_author_id = unass_data[1]
+        unass_paper_info = pub[unass_paper_id]
+        the_author_name = replace_str(unass_paper_info['authors'][author_rank]['name'])
+        # 正样本：同名作者
+        # print("\n", existing_data_hash_by_name[the_author_name])
+        for same_name_author_id in existing_data_hash_by_name[the_author_name]:
+            if same_name_author_id == unass_author_id:
+                one_person_sim_list = []
+                for paper_id in existing_data_hash_by_name[the_author_name][same_name_author_id]:
+                    one_person_sim_list.append(
+                        gensim_calc_two_paper(result_title,
+                                              result_abstract,
+                                              pub,
+                                              unass_paper_id,
+                                              paper_id))
+                break
+
+        # 随机负样本： 不同id作者
+        if len(existing_data_hash_by_name[the_author_name]) > 1:
+            diff_name_author_id = list(existing_data_hash_by_name[the_author_name])
+            diff_name_author_id.remove(unass_author_id)
+            # print(diff_name_author_id)
+            same_name_author_id = random.choice(diff_name_author_id)
+            one_person_sim_list = []
+            for paper_id in existing_data_hash_by_name[the_author_name][same_name_author_id]:
+                one_person_sim_list.append(
+                    gensim_calc_two_paper(result_title,
+                                          result_abstract,
+                                          pub,
+                                          unass_paper_id,
+                                          paper_id))
+        # total += 1
+        # if total > 100:
+        #     break
+    print(len(result_title))
+    print(len(result_abstract))
+    with open(data_result_dir+'title.json', 'wb') as fresult_title:
+        fresult_title.write(json.dumps(result_title))
+    with open(data_result_dir+'abstract.model', 'wb') as fresult_abstract:
+        fresult_abstract.write(json.dumps(result_abstract))
+    return
 
 
 def train_gensim_model(file_name_unass_data, file_name_existing_data, file_name_pub, file_name_out):
@@ -282,6 +352,12 @@ def train_gensim_model(file_name_unass_data, file_name_existing_data, file_name_
         existing_data = json.load(r)
     with open(file_name_pub, 'r') as r:
         pub = json.load(r)
+    data_model_dir = file_name_out + 'model_'
+    # 训练模型
+    gensim_train(pub, data_model_dir)
+    # 预处理出结果,get_train_data阶段可以直接用
+    data_result_dir = file_name_out + 'result_'
+    gensim_result(unass_data, existing_data, pub, data_model_dir, data_result_dir)
     return
 
 
@@ -296,13 +372,13 @@ if __name__ == "__main__":
                          file_name_existing_data,
                          file_name_pub,
                          out_file_name)
-    # file_name_unass_data = 'data/track2/train/train_unass_data.json'
-    # file_name_existing_data = 'data/track2/train/train_existing_data.json'
-    # file_name_pub = 'data/track2/train/train_pub.json'
-    # train_gensim = False
-    # if train_gensim:
-    #     out_file_name = 'data/track2/train/train_pub_gensim_'
-    #     train_gensim_model(file_name_unass_data,
-    #                        file_name_existing_data,
-    #                        file_name_pub,
-    #                        out_file_name)
+    file_name_unass_data = 'data/track2/train/train_unass_data.json'
+    file_name_existing_data = 'data/track2/train/train_existing_data.json'
+    file_name_pub = 'data/track2/train/train_pub.json'
+    train_gensim = True
+    if train_gensim:
+        out_file_name = 'data/track2/train/train_pub_gensim_'
+        train_gensim_model(file_name_unass_data,
+                           file_name_existing_data,
+                           file_name_pub,
+                           out_file_name)

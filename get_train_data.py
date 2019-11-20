@@ -68,7 +68,7 @@ def add_nltk_title(result, paper_id_1, paper_id_2):
     global nltk_title
     try:
         tup = (paper_id_1, paper_id_2)
-        result.append(tup)
+        result.append(nltk_title[tup])
     except:
         result.append(0)
 
@@ -77,7 +77,7 @@ def add_nltk_abstract(result, paper_id_1, paper_id_2):
     global nltk_abstract
     try:
         tup = (paper_id_1, paper_id_2)
-        result.append(tup)
+        result.append(nltk_abstract[tup])
     except:
         result.append(0)
 
@@ -86,16 +86,16 @@ def add_gensim_title(result, paper_id_1, paper_id_2):
     global gensim_title
     try:
         tup = (paper_id_1, paper_id_2)
-        result.append(tup)
+        result.append(gensim_title[tup])
     except:
         result.append(0)
 
 
 def add_gensim_abstract(result, paper_id_1, paper_id_2):
-    global gensim_title
+    global gensim_abstract
     try:
         tup = (paper_id_1, paper_id_2)
-        result.append(tup)
+        result.append(gensim_abstract[tup])
     except:
         result.append(0)
 
@@ -163,29 +163,20 @@ def replace_str(input):
 
 
 def load_nltk_result():
-    # global word_dict, word_dict_abstract
-    global corpus_title, corpus_abstract
-    with open('data/track2/train/train_tf_idf.txt', 'rb') as r1:
-        corpus_title = pickle.load(r1)
-    # with open('data/track2/train/train_word_dict.txt', 'rb') as r2:
-    #     word_dict = pickle.load(r2)
-    with open('data/track2/train/train_abstract_tf_idf.txt', 'rb') as r3:
-        corpus_abstract = pickle.load(r3)
-    # with open('data/track2/train/train_abstract_word_dict.txt', 'rb') as r4:
-    #     word_dict_abstract = pickle.load(r4)
-    # print(word_dict)
-    # print(word_dict_abstract)
+    global nltk_title, nltk_abstract
+    with open('data/track2/train/train_pub_nltk_result_title.json', 'rb') as r1:
+        nltk_title = json.load(r1)
+    with open('data/track2/train/train_pub_nltk_result_abstractr.json', 'rb') as r3:
+        nltk_abstract = json.load(r3)
 
 
-def load_gensim_result(train_pub):
-    global model_title, model_abstract
-    data_dir = "data/track2/train/gensim_doc2vec_"
-    model_title = gensim.models.doc2vec.Doc2Vec.load(data_dir + "title.model")
-    model_abstract = gensim.models.doc2vec.Doc2Vec.load(data_dir + "abstract.model")
-    for data in tqdm(train_pub):
-        train_pub[data]['doc2vec1'] = model_title.infer_vector(train_pub[data]['title'].split())
-        train_pub[data]['doc2vec2'] = model_abstract.infer_vector(
-            (train_pub[data]['title']+train_pub[data]['abstract']).split())
+def load_gensim_result():
+    global gensim_title, gensum_abstract
+    data_dir = "data/track2/train/train_pub_gensim_"
+    with open('data/track2/train/train_pub_gensim_result_title.json', 'rb') as r1:
+        gensim_title = json.load(r1)
+    with open('data/track2/train/train_pub_gensim_result_abstractr.json', 'rb') as r3:
+        gensum_abstract = json.load(r3)
 
 
 if __name__ == "__main__":
@@ -196,7 +187,7 @@ if __name__ == "__main__":
     with open('data/track2/train/train_pub_alter.json', 'r') as r:
         train_pub = json.load(r)
     load_nltk_result()
-    load_gensim_result(train_pub)
+    load_gensim_result()
     existing_data_hash_by_name = {}
     for person_id in train_existing_data:
         real_name = train_existing_data[person_id]['name']
