@@ -351,11 +351,9 @@ def gensim_result(unass_data, existing_data, pub, data_model_dir, data_result_di
                                           unass_paper_id,
                                           paper_id))
         total += 1
-        if total > 50:
+        if total == 100:
             break
     print(len(result_title), type(result_title))
-    print(type(json.dumps(result_title)))
-    print(len(result_abstract))
     with open(data_result_dir+'title.json', 'wb') as fresult_title:
         pickle.dump(result_title, fresult_title)
         fresult_title.close()
@@ -390,7 +388,7 @@ if __name__ == "__main__":
     file_name_unass_data = 'data/track2/train/train_unass_data.json'
     file_name_existing_data = 'data/track2/train/train_existing_data.json'
     file_name_pub = 'data/track2/train/train_pub_alter.json'
-    train_nltk = False
+    train_nltk = True
     if train_nltk:
         out_file_name = 'data/track2/train/train_pub_nltk_'
         train_nltk_model(file_name_unass_data,
