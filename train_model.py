@@ -178,7 +178,7 @@ def nltk_tf(unass_data, existing_data, pub, data_model_dir, data_result_dir):
                                         unass_paper_id,
                                         paper_id))
         total += 1
-        if total > 50:
+        if total == 100:
             break
     print(len(result_title))
     print(len(result_abstract))

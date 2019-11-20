@@ -63,23 +63,31 @@ def transform_sentence(doc):
 
 
 def transform_pub(docs):
+    whole_title = []
+    total_word_title = 0
+    whole_abstract = []
+    total_word_abstract = 0
     for data in tqdm(docs):
         # 处理标题：词干化->去掉停用词->加入if-idf
         try:
             docs[data]['title'] = transform_sentence(docs[data]['title'])
         except ZeroDivisionError as e:
             docs[data]['title'] = ""
+            # print("\ttitle:", cna_pub[data]['title'])
+
         # 处理关键词：词干化
         new_keywords_list = []
         try:
             if 'keywords' in docs[data]:
-                new_keywords_list = [for_keywords_change_word_by_lemmatize(keywords) for keywords in cna_pub[data]['keywords']]
+                new_keywords_list = [for_keywords_change_word_by_lemmatize(keywords) for keywords in docs[data]['keywords']]
             else:
                 new_keywords_list = []
         except ZeroDivisionError as e:
             new_keywords_list = []
         finally:
             docs[data]['keywords'] = new_keywords_list
+            # print("\tkeywords:", cna_pub[data]['keywords'])
+
         # 处理摘要: 词干化
         if 'abstract' in docs[data]:
             docs[data]['abstract'] = transform_sentence(docs[data]['abstract'])
@@ -88,6 +96,9 @@ def transform_pub(docs):
     with open('data/track2/train/train_pub_alter.json', 'w', encoding='utf-8') as w:
         w.write(json.dumps(docs))
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish lemma ]")
+
+
+
 
 
 if __name__ == '__main__':
