@@ -165,18 +165,18 @@ def replace_str(input):
 def load_nltk_result():
     global nltk_title, nltk_abstract
     with open('data/track2/train/train_pub_nltk_result_title.json', 'rb') as r1:
-        nltk_title = json.load(r1)
+        nltk_title = pickle.load(r1)
     with open('data/track2/train/train_pub_nltk_result_abstractr.json', 'rb') as r3:
-        nltk_abstract = json.load(r3)
+        nltk_abstract = pickle.load(r3)
 
 
 def load_gensim_result():
     global gensim_title, gensum_abstract
     data_dir = "data/track2/train/train_pub_gensim_"
     with open('data/track2/train/train_pub_gensim_result_title.json', 'rb') as r1:
-        gensim_title = json.load(r1)
+        gensim_title = pickle.load(r1)
     with open('data/track2/train/train_pub_gensim_result_abstractr.json', 'rb') as r3:
-        gensum_abstract = json.load(r3)
+        gensum_abstract = pickle.load(r3)
 
 
 if __name__ == "__main__":
@@ -225,23 +225,22 @@ if __name__ == "__main__":
                 # print(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
                 train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
                 train_y.append(1)
-
         # 随机负样本： 不同id作者
-        while True:
-            same_name_author_id = random.choice(existing_data_hash_by_name)
-            if same_name_author_id != unass_author_id:
-                one_person_sim_list = []
-                for paper_id in existing_data_hash_by_name[the_author_name][same_name_author_id]:
-                    one_person_sim_list.append(
-                        compare_two_paper(train_pub,
-                                          unass_paper_id,
-                                          paper_id,
-                                          author_rank))
-                # print(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
-                train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
-                train_y.append(0)
-                break
-
+        if len(existing_data_hash_by_name[the_author_name]) > 1:
+            diff_name_author_id = list(existing_data_hash_by_name[the_author_name])
+            diff_name_author_id.remove(unass_author_id)
+            # print(diff_name_author_id)
+            same_name_author_id = random.choice(diff_name_author_id)
+            one_person_sim_list = []
+            for paper_id in existing_data_hash_by_name[the_author_name][same_name_author_id]:
+                one_person_sim_list.append(
+                    compare_two_paper(train_pub,
+                                      unass_paper_id,
+                                      paper_id,
+                                      author_rank))
+            # print(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
+            train_x.append(np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list))
+            train_y.append(0)
 
 with open('data/track2/train/train_x.pkl', 'wb') as wb:
     pickle.dump(np.array(train_x), wb)

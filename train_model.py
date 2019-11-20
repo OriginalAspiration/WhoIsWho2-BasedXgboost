@@ -165,7 +165,7 @@ def nltk_tf(unass_data, existing_data, pub, data_model_dir, data_result_dir):
         if len(existing_data_hash_by_name[the_author_name]) > 1:
             diff_name_author_id = list(existing_data_hash_by_name[the_author_name])
             diff_name_author_id.remove(unass_author_id)
-            print(diff_name_author_id)
+            # print(diff_name_author_id)
             same_name_author_id = random.choice(diff_name_author_id)
             one_person_sim_list = []
             for paper_id in existing_data_hash_by_name[the_author_name][same_name_author_id]:
@@ -177,17 +177,17 @@ def nltk_tf(unass_data, existing_data, pub, data_model_dir, data_result_dir):
                                         pub,
                                         unass_paper_id,
                                         paper_id))
-        # total += 1
-        # if total > 100:
-        #     break
+        total += 1
+        if total > 50:
+            break
     print(len(result_title))
     print(len(result_abstract))
-    with open(data_result_dir+'title.json', 'wb') as fresult_title:
-        fresult_title.write(json.dumps(result_title))
+    with open(data_result_dir + 'title.res', 'wb') as fresult_title:
+        pickle.dump(result_title, fresult_title)
         fresult_title.close()
-    with open(data_result_dir+'abstract.model', 'wb') as fresult_abstract:
-        fresult_abstract.write(json.dumps(result_abstract))
-        fresult_abstract.close()
+    with open(data_result_dir + 'abstract.res', 'wb') as fresult_abstract:
+        pickle.dump(result_abstract, fresult_abstract)
+        fresult_title.close()
     return
 
 
@@ -217,46 +217,51 @@ def train_nltk_model(file_name_unass_data, file_name_existing_data, file_name_pu
 # ========================================================
 
 def gensim_train(docs, data_dir):
-    print("[train gensim]")
+    if os.path.exists(data_dir+'title.model'):
+        return
+    print("[Gensim] train gensim")
     whole_title = []
     whole_abstract = []
     for data in tqdm(docs):
         if 'title' in docs[data]:
             whole_title.append(docs[data]['title'])
-        if 'abstract' in docs[data]:
-            whole_abstract.append(docs[data]['abstract'])
+        if ('abstract' not in docs[data]) or (not docs[data]['abstract']):
+            docs[data]['abstract'] = " "
+        whole_abstract.append(docs[data]['abstract'])
 
     # 训练 title
     title_x_train = []
     for i, doc in tqdm(enumerate(whole_title)):
         word_list = doc.split(' ')
-        document = gensim.models.doc2vec.TaggedDocument(word_list, tags=[i])
-        title_x_train.append(document)
+        if len(word_list) > 0:
+            document = gensim.models.doc2vec.TaggedDocument(word_list, tags=[i])
+            title_x_train.append(document)
     model_title = gensim.models.doc2vec.Doc2Vec(vector_size=256, window=10, min_count=5,
                                   workers=4, alpha=0.025, min_alpha=0.025, epochs=12)
     model_title.build_vocab(title_x_train)
-    print("开始训练title...")
+    print("[Gensim] 开始训练title...")
     model_title.train(title_x_train, total_examples=model_title.corpus_count, epochs=12)
     model_title.save(data_dir+"title.model")
-    print("title model saved")
+    print("[Gensim] title model saved")
 
     # 训练abstract
     abstract_x_train = []
     for i, doc in tqdm(enumerate(whole_abstract)):
         word_list = doc.split(' ')
-        document = gensim.models.doc2vec.TaggedDocument(word_list, tags=[i])
-        abstract_x_train.append(document)
+        if len(word_list) > 0:
+            document = gensim.models.doc2vec.TaggedDocument(word_list, tags=[i])
+            abstract_x_train.append(document)
     model_abstract = gensim.models.doc2vec.Doc2Vec(vector_size=256, window=10, min_count=5,
                                                 workers=4, alpha=0.025, min_alpha=0.025, epochs=12)
     model_abstract.build_vocab(abstract_x_train)
-    print("开始训练abstract...")
+    print("[Gensim] 开始训练abstract...")
     # 训练模型
     model_abstract.train(abstract_x_train, total_examples=model_abstract.corpus_count, epochs=12)
     model_abstract.save(data_dir + "abstract.model")
-    print("abstract model saved")
+    print("[Gensim] abstract model saved")
 
 
-def add_gensim_title(result, corpus, docs, paper_id_1, paper_id_2):
+def add_gensim_title(result, docs, paper_id_1, paper_id_2):
     tup = (paper_id_1, paper_id_2)
     try:
         vec1 = docs[paper_id_1]['doc2vec1']
@@ -268,7 +273,7 @@ def add_gensim_title(result, corpus, docs, paper_id_1, paper_id_2):
         result[tup] = 0
 
 
-def add_gensim_abstract(result, corpus, docs, paper_id_1, paper_id_2):
+def add_gensim_abstract(result, docs, paper_id_1, paper_id_2):
     tup = (paper_id_1, paper_id_2)
     try:
         vec1 = docs[paper_id_1]['doc2vec2']
@@ -298,7 +303,10 @@ def gensim_result(unass_data, existing_data, pub, data_model_dir, data_result_di
         existing_data_hash_by_name[replaced_real_name][person_id] = existing_data[person_id]['papers']
     model_title = gensim.models.doc2vec.Doc2Vec.load(data_model_dir + "title.model")
     model_abstract = gensim.models.doc2vec.Doc2Vec.load(data_model_dir + "abstract.model")
+    print("[Gensim] each infer_vector")
     for data in tqdm(pub):
+        if ('abstract' not in pub[data]) or (not pub[data]['abstract']):
+            pub[data]['abstract'] = " "
         pub[data]['doc2vec1'] = model_title.infer_vector(pub[data]['title'].split())
         pub[data]['doc2vec2'] = model_abstract.infer_vector(
             (pub[data]['title'] + ' ' + pub[data]['abstract']).split())
@@ -306,6 +314,8 @@ def gensim_result(unass_data, existing_data, pub, data_model_dir, data_result_di
     random.seed(2333)
     result_title = {}
     result_abstract = {}
+    total = 0
+    print("[Gensim] calc two sim")
     for unass_data in tqdm(unass_data):
         unass_paper_id = unass_data[0][:8]
         author_rank = int(unass_data[0][9:])
@@ -340,17 +350,18 @@ def gensim_result(unass_data, existing_data, pub, data_model_dir, data_result_di
                                           pub,
                                           unass_paper_id,
                                           paper_id))
-        # total += 1
-        # if total > 100:
-        #     break
-    print(len(result_title))
+        total += 1
+        if total > 50:
+            break
+    print(len(result_title), type(result_title))
+    print(type(json.dumps(result_title)))
     print(len(result_abstract))
     with open(data_result_dir+'title.json', 'wb') as fresult_title:
-        fresult_title.write(json.dumps(result_title))
+        pickle.dump(result_title, fresult_title)
         fresult_title.close()
-    with open(data_result_dir+'abstract.model', 'wb') as fresult_abstract:
-        fresult_abstract.write(json.dumps(result_abstract))
-        fresult_abstract.close()
+    with open(data_result_dir+'abstract.json', 'wb') as fresult_abstract:
+        pickle.dump(result_abstract, fresult_abstract)
+        fresult_title.close()
     return
 
 
@@ -379,7 +390,7 @@ if __name__ == "__main__":
     file_name_unass_data = 'data/track2/train/train_unass_data.json'
     file_name_existing_data = 'data/track2/train/train_existing_data.json'
     file_name_pub = 'data/track2/train/train_pub_alter.json'
-    train_nltk = True
+    train_nltk = False
     if train_nltk:
         out_file_name = 'data/track2/train/train_pub_nltk_'
         train_nltk_model(file_name_unass_data,
