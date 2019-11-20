@@ -108,11 +108,13 @@ def nltk_idf(docs, data_dir):
     corpus_title = TextCollection(whole_title)
     with open(data_dir+'title.model', 'wb') as model_tf_idf:
         pickle.dump(corpus_title, model_tf_idf)
+        model_tf_idf.close()
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish title pickle ]")
 
     corpus_abstract = TextCollection(whole_abstract)
     with open(data_dir+'abstract.model', 'wb') as model_tf_idf2:
         pickle.dump(corpus_abstract, model_tf_idf2)
+        model_tf_idf2.close()
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish abstract pickle ]")
 
 
@@ -128,8 +130,10 @@ def nltk_tf(unass_data, existing_data, pub, data_model_dir, data_result_dir):
         existing_data_hash_by_name[replaced_real_name][person_id] = existing_data[person_id]['papers']
     with open(data_model_dir+'title.model', 'rb') as model_title:
         corpus_title = pickle.load(model_title)
+        model_title.close()
     with open(data_model_dir+'abstract.model', 'rb') as model_abstract:
         corpus_abstract = pickle.load(model_abstract)
+        model_abstract.close()
 
     random.seed(2333)
     total = 0
@@ -180,8 +184,10 @@ def nltk_tf(unass_data, existing_data, pub, data_model_dir, data_result_dir):
     print(len(result_abstract))
     with open(data_result_dir+'title.json', 'wb') as fresult_title:
         fresult_title.write(json.dumps(result_title))
+        fresult_title.close()
     with open(data_result_dir+'abstract.model', 'wb') as fresult_abstract:
         fresult_abstract.write(json.dumps(result_abstract))
+        fresult_abstract.close()
     return
 
 
@@ -190,10 +196,13 @@ def train_nltk_model(file_name_unass_data, file_name_existing_data, file_name_pu
         return
     with open(file_name_unass_data, 'r') as r:
         unass_data = json.load(r)
+        r.close()
     with open(file_name_existing_data, 'r') as r:
         existing_data = json.load(r)
+        r.close()
     with open(file_name_pub, 'r') as r:
         pub = json.load(r)
+        r.close()
     data_model_dir = file_name_out + 'model_'
     # 训练模型
     nltk_idf(pub, data_model_dir)
@@ -338,8 +347,10 @@ def gensim_result(unass_data, existing_data, pub, data_model_dir, data_result_di
     print(len(result_abstract))
     with open(data_result_dir+'title.json', 'wb') as fresult_title:
         fresult_title.write(json.dumps(result_title))
+        fresult_title.close()
     with open(data_result_dir+'abstract.model', 'wb') as fresult_abstract:
         fresult_abstract.write(json.dumps(result_abstract))
+        fresult_abstract.close()
     return
 
 
@@ -348,10 +359,13 @@ def train_gensim_model(file_name_unass_data, file_name_existing_data, file_name_
     #     return
     with open(file_name_unass_data, 'r') as r:
         unass_data = json.load(r)
+        r.close()
     with open(file_name_existing_data, 'r') as r:
         existing_data = json.load(r)
+        r.close()
     with open(file_name_pub, 'r') as r:
         pub = json.load(r)
+        r.close()
     data_model_dir = file_name_out + 'model_'
     # 训练模型
     gensim_train(pub, data_model_dir)
