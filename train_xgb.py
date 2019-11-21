@@ -5,7 +5,7 @@ import numpy as np
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 
-
+model_name = 'xgb_1.model'
 with open('data/track2/train/train_x.pkl', 'rb') as rb:
     train_x = pickle.load(rb)
 with open('data/track2/train/train_y.pkl', 'rb') as rb:
@@ -24,7 +24,8 @@ params={'booster':'gbtree',
         'colsample_bytree':0.75,
         'min_child_weight':2,
         'eta': 0.025,
-        'seed':0}
+        'seed':0,
+        'scale_pos_weight' : 100}
 
 watchlist = [(dtrain, 'train')]
 bst=xgb.train(params, dtrain, num_boost_round=200, evals=watchlist)
@@ -43,8 +44,8 @@ print ('Precesion: %.4f' %metrics.precision_score(test_y,y_pred))
 print(metrics.confusion_matrix(test_y,y_pred))
 
 print('----- save_model -----')
-bst.save_model('xgb_1.model')
-tar = xgb.Booster(model_file='xgb_1.model')
+bst.save_model(model_name)
+tar = xgb.Booster(model_file=model_name)
 
 ypred=tar.predict(dtest)
  
@@ -59,3 +60,8 @@ print ('Recall: %.4f' % metrics.recall_score(test_y,y_pred))
 print ('F1-score: %.4f' %metrics.f1_score(test_y,y_pred))
 print ('Precesion: %.4f' %metrics.precision_score(test_y,y_pred))
 print(metrics.confusion_matrix(test_y,y_pred))
+
+
+print( np.sum(test_y*y_pred) / sum(test_y) )
+test_y = 1-test_y
+print( np.sum(test_y*y_pred) / sum(test_y) )

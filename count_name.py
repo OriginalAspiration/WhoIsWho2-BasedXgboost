@@ -8,7 +8,7 @@ import xgboost as xgb
 
 def replace_str(input):
     input = input.strip().replace('_', '').replace('-', '').replace(' ', '').replace('.', '').lower()
-    return input.replace('yangjie', 'jieyang').replace('liubing', 'bingliu').replace('0008', '').replace('0002', '')
+    return input.replace('jie yang', 'jieyang').replace('yangjie', 'jieyang').replace('liubing', 'bingliu').replace('0008', '').replace('0002', '')
 
 
 if __name__ == "__main__":
