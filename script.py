@@ -28,9 +28,9 @@ def load_nltk_result():
 
 
 def load_gensim_result():
-    with open('data/track2/test/test_pub_gensim_title.json', 'rb') as r1:
+    with open('data/track2/test/test_pub_gensim_result_title.json', 'rb') as r1:
         gensim_title = pickle.load(r1)
-    with open('data/track2/test/test_pub_gensim_abstract.json', 'rb') as r3:
+    with open('data/track2/test/test_pub_gensim_result_abstract.json', 'rb') as r3:
         gensum_abstract = pickle.load(r3)
     return gensim_title, gensum_abstract
 
@@ -60,8 +60,8 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, model_name, mo
                 id_list.append(same_name_author_id)
 
             dtest=xgb.DMatrix(np.array(cna_x))
-            #ypred = bst.predict(dtest) + est.predict(np.array(cna_x))
-            ypred =  est.predict(np.array(cna_x))
+            ypred = bst.predict(dtest) + est.predict(np.array(cna_x))
+            #ypred =  est.predict(np.array(cna_x))
             predicted_author_id = id_list[np.argsort(ypred)[-1].item()]
             if predicted_author_id not in result_dict:
                 result_dict[predicted_author_id] = []
@@ -118,7 +118,7 @@ if __name__ == "__main__":
             #print('the_author_name', the_author_name)
             #print('old_name', old_name)
             pass
-    if False:
+    if True:
         format_process.save_format_data(test_pub, file_name_alter_pub)
     #assert False
 
@@ -126,22 +126,22 @@ if __name__ == "__main__":
     if True:
         with open(file_name_alter_pub, 'r') as r:
             test_alter_pub = json.load(r)
-        if False:
+        if True:
             data_model_dir = 'data/track2/test/test_pub_nltk_' + 'model_'
             data_result_dir = 'data/track2/test/test_pub_nltk_' + 'result_'
             train_model.nltk_idf(test_alter_pub, data_model_dir)
             train_model.nltk_tf(test_alter_pub, data_model_dir, data_result_dir, 
                                 whole_data_hash_by_name, None, negative_example)
 
-        if False:
+        if True:
             data_model_dir = 'data/track2/train/train_pub_gensim_' + 'model_'
             data_result_dir = 'data/track2/test/test_pub_gensim_' + 'result_'
             train_model.gensim_result(test_pub, data_model_dir, data_result_dir,
                                 whole_data_hash_by_name, None, negative_example)
     
     nltk_title, nltk_abstract = load_nltk_result()
-    #gensim_title, gensum_abstract = load_gensim_result()
-    gensim_title, gensum_abstract = None, None
+    gensim_title, gensum_abstract = load_gensim_result()
+    #gensim_title, gensum_abstract = None, None
 
     #cna_valid_unass_competition = cna_valid_unass_competition[:20]
     num_pool = 4

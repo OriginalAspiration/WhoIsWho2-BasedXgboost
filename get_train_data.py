@@ -10,6 +10,7 @@ import json
 import pickle
 import gensim
 import random
+import math
 import multiprocessing
 from multiprocessing import Pool
 import numpy as np
@@ -96,7 +97,7 @@ def add_variate_same_org(result, paper_info_1, paper_info_2, author_rank):
         F1 = 2*precision*recall/(precision+recall)
         result.append(F1)
 
-def add_lang_result(result, paper_id_1, paper_id_2, lang_result):
+def add_lang_result(result, paper_id_1, paper_id_2, lang_result, out_log=True):
     if lang_result is None:
         f = 0
     else:
@@ -104,7 +105,16 @@ def add_lang_result(result, paper_id_1, paper_id_2, lang_result):
         f = lang_result[tup]
 
     result.append(f)
-    result.append( max(0.0, -np.log(f+1e-8) )/18 )
+    if out_log:
+        t = max(0.0, -np.log(f+1e-8) )/20
+        
+        try:
+            assert math.isnan(t) == False
+            assert math.isnan(f) == False
+        except:
+            print('t', t, 'f', f)
+            assert False
+        result.append( t )
 
 
 def add_variate_same_venue(result, paper_info_1, paper_info_2):
@@ -151,24 +161,30 @@ def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author
                                       nltk_title, nltk_abstract,
                                       gensim_title, gensum_abstract):
     result = []
-    add_variate_same_author(result, paper_info_1, paper_info_2)
+    add_variate_same_author(result, paper_info_1, paper_info_2)  # 3
 
-    add_variate_same_org(result, paper_info_1, paper_info_2, author_rank)
+    add_variate_same_org(result, paper_info_1, paper_info_2, author_rank)  # 3
     
-    add_variate_year(result, paper_info_1, paper_info_2)
+    add_variate_year(result, paper_info_1, paper_info_2)  # 1
 
-    add_variate_same_venue(result, paper_info_1, paper_info_2)
+    add_variate_same_venue(result, paper_info_1, paper_info_2) # 1
 
-    add_variate_same_keywords(result, paper_info_1, paper_info_2)
-    
-    add_lang_result(result, paper_id_1, paper_id_2, nltk_title)
-    add_lang_result(result, paper_id_1, paper_id_2, nltk_abstract)
+    add_variate_same_keywords(result, paper_info_1, paper_info_2) # 3
+
+    add_lang_result(result, paper_id_1, paper_id_2, nltk_title) # 2
+    add_lang_result(result, paper_id_1, paper_id_2, nltk_abstract) # 2
+    add_lang_result(result, paper_id_1, paper_id_2, gensim_title, False) # 1
+    add_lang_result(result, paper_id_1, paper_id_2, gensum_abstract, False) # 1
+    # 17
     return result
 
-def compare_paper_with_set(id_list, unass_paper_id, train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract):
+def compare_paper_with_set(id_list, unass_paper_id, train_pub, author_rank, nltk_title, nltk_abstract,
+                                        gensim_title, gensum_abstract):
     one_person_sim_list = []
     for paper_id in id_list:
         #print('paper_id',paper_id, 'unass_paper_id', unass_paper_id)
+        if paper_id == unass_paper_id:
+            continue
         one_person_sim_list.append(
                     compare_two_paper(unass_paper_id,
                                         paper_id,
@@ -181,6 +197,8 @@ def compare_paper_with_set(id_list, unass_paper_id, train_pub, author_rank, nltk
     
     x = np.concatenate([x, np.max(one_person_sim_list, axis=0)], 0)
     x = np.concatenate([x, np.min(one_person_sim_list, axis=0)], 0)
+    #print( np.shape(x) )
+    #assert False
     return x
 
 def replace_str(input):
@@ -198,16 +216,17 @@ def load_nltk_result():
 def load_gensim_result():
     with open('data/track2/train/train_pub_gensim_result_title.json', 'rb') as r1:
         gensim_title = pickle.load(r1)
+
     with open('data/track2/train/train_pub_gensim_result_abstract.json', 'rb') as r3:
         gensum_abstract = pickle.load(r3)
     return gensim_title, gensum_abstract
 
 def f(negative_example, existing_data_hash_by_name, unass_paper_id, train_pub, 
-        author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, pool_id):
+        author_rank, pool_id):
     print('pool_id', pool_id, 'begin')
     results = []
 
-    if pool_id == 7:
+    if pool_id == 0:
         x_negative_example = tqdm(negative_example)
     else:
         x_negative_example = negative_example
@@ -219,18 +238,12 @@ def f(negative_example, existing_data_hash_by_name, unass_paper_id, train_pub,
     return results
 
 if __name__ == "__main__":
-    with open('data/track2/train/train_unass_data.json', 'r') as r:
-        train_unass_data = json.load(r)
-    with open('data/track2/train/train_existing_data.json', 'r') as r:
-        train_existing_data = json.load(r)
     with open('data/track2/train/train_pub_alter.json', 'r') as r:
         train_pub = json.load(r)
     nltk_title, nltk_abstract = load_nltk_result()
-    gensim_title, gensum_abstract = None, None
-    #gensim_title, gensum_abstract = load_gensim_result()
+    #gensim_title, gensum_abstract = None, None
+    gensim_title, gensum_abstract = load_gensim_result()
 
-    len_train_unass_data = len(train_unass_data)
-    print("The number of Train_unass_data:", len_train_unass_data)
     train_x = []
     train_y = []
     total = 0
@@ -241,13 +254,24 @@ if __name__ == "__main__":
 
 
     cnt = 0
+    min_x = None
+    max_x = None
     for unass_author_id, unass_paper_id, the_author_name, author_rank in tqdm(positive_example):
         x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][unass_author_id], unass_paper_id, 
-                                train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract)
+                                train_pub, author_rank,  nltk_title, nltk_abstract, gensim_title, gensum_abstract)
         train_x.append(x)
         train_y.append(1)
+
+        if min_x is None:
+            min_x = x
+            max_x = x
+        min_x = np.min( [x, min_x], axis=0 )
+        max_x = np.max( [x, max_x], axis=0 )
+    print('min_x', min_x)
+    print('max_x', max_x)
+    #assert False
     
-    num_pool = 8
+    num_pool = 4
     len_data = len(negative_example)
     print("Length of data", len_data)
     pool = Pool()#train_pub
@@ -259,13 +283,13 @@ if __name__ == "__main__":
         sub_data.append(one_data)
         if len(sub_data) >= step:
             jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
-                                train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, id)))
+                                train_pub, author_rank, id)))
             id += 1
             sub_data = []
 
     if len(sub_data) > 0:
         jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
-                    train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, id)))
+                    train_pub, author_rank, id)))
         id += 1
         sub_data = {}
     
@@ -282,5 +306,3 @@ if __name__ == "__main__":
         pickle.dump(np.array(train_x), wb)
     with open('data/track2/train/train_y.pkl', 'wb') as wb:
         pickle.dump(np.array(train_y), wb)
-
-    #TODO  1.可能要修改特征维度 2.可能和test那边能配套上

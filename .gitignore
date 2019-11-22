@@ -1,3 +1,7 @@
+.model
+.pkl
+xxxx.py
+.json
 data/
 .DS_Store
 .vscode/

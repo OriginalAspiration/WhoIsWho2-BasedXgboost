@@ -11,28 +11,30 @@ import gensim
 import random
 from gensim import corpora, models, similarities
 import os
+import re
+import math
 import numpy as np
 import multiprocessing
 from multiprocessing import Pool
 
+from scipy.spatial.distance import pdist
+
 def cosVector(x, y):
-    if len(x) != len(y):
-        print('error input,x and y is not in the same space')
-        return 0
-    result1 = 1e-8
-    result2 = 1e-8
-    result3 = 1e-8
-    for i in range(len(x)):
-        result1 += x[i]*y[i]   #sum(X*Y)
-        result2 += x[i]**2     #sum(X*X)
-        result3 += y[i]**2     #sum(Y*Y)
-    ans = result1/((result2*result3)**0.5)
-    return ans
+    t = pdist(np.vstack([x, y]),'cosine')[0]
+    return float( 1.0 - t )
 
 
-def replace_str(input):
-    return input.strip().replace('_', '').replace('-', '').replace(' ', '').replace('.', '').lower()
-
+def fix_name(s):
+    s = s.lower().strip()
+    x = re.split(r'[ \.\-\_]', s)
+    set_x = set()
+    for a in x:
+        if len(a) > 0:
+            set_x.add(a)
+    x = list(set_x)
+    x.sort()
+    s = ''.join(x)
+    return s
 
 # ====================================
 # nltk
@@ -47,8 +49,8 @@ def pre_doc_vector(word_dict, doc):
 
 
 def get_doc_vector(word_dict, corpus, doc):
-    dict_size = len(word_dict)
-    doc_vector = [0 for i in range(dict_size)]
+    dict_size = max(1, len(word_dict))
+    doc_vector = [1e-9 for i in range(dict_size)]
     tf = {}
     for word in doc:
         tf.setdefault(word, 0)
@@ -57,13 +59,7 @@ def get_doc_vector(word_dict, corpus, doc):
     for word in word_dict:
         if word in tf:
             word_index = word_dict[word]
-            #print('word', word)
-            ##print('tf', tf)
-            #print('tf', tf[word])
-            #print('corpus', corpus)
-            #print('corpus', type(corpus))
-            #print('corpus[word]', corpus[word])
-            doc_vector[word_index] = tf[word]*1.0/ (corpus[word]+1.0)
+            doc_vector[word_index] = tf[word]*1.0/ max(corpus[word], 1.0)
     return doc_vector
 
 
@@ -75,6 +71,14 @@ def add_nltk_title(result, corpus, docs, paper_id_1, paper_id_2):
     vector_1 = get_doc_vector(word_dict, corpus, docs[paper_id_1]['title'])
     vector_2 = get_doc_vector(word_dict, corpus, docs[paper_id_2]['title'])
     ans = cosVector(vector_1, vector_2)
+    try:
+        assert np.isnan(ans) == False
+        assert math.isnan(ans) == False
+        assert ans == ans
+    except:
+        print('vector_1', vector_1)
+        print('vector_2', vector_2)
+        print('ans', ans)
     result[tup] = ans
     return ans
 
@@ -97,6 +101,7 @@ def add_nltk_abstract(result, corpus, docs, paper_id_1, paper_id_2):
     vector_1 = get_doc_vector(word_dict, corpus, docs[paper_id_1]['title'] + docs[paper_id_1]['abstract'])
     vector_2 = get_doc_vector(word_dict, corpus, docs[paper_id_2]['title'] + docs[paper_id_2]['abstract'])
     ans = cosVector(vector_1, vector_2)
+    assert math.isnan(ans) == False
     result[tup] = ans
     return ans
 
@@ -147,27 +152,42 @@ def nltk_idf(docs, data_dir):
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish abstract pickle ]")
 
 
-def f1(negative_example, existing_data_hash_by_name, corpus_title, corpus_abstract, pub, pool_id):
+def f1(negative_example, existing_data_hash_by_name, corpus_title, corpus_abstract, pub, 
+        pool_id, is_negative=True):
     print('pool_id', pool_id, 'begin')
     list_ans1 = []
     list_ans2 = []
     result_title = {}
     result_abstract = {}
-    if pool_id == 7:
+    if pool_id == 0:
         x = tqdm(negative_example)
     else:
         x = negative_example
-    for unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id in x:
-        for paper_id in existing_data_hash_by_name[the_author_name][other_name_author_id]:
-            ans1,ans2, r1, r2 = nltk_calc_two_paper(corpus_title,
+    
+    if is_negative:
+        for unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id in x:
+            for paper_id in existing_data_hash_by_name[the_author_name][other_name_author_id]:
+                ans1,ans2, r1, r2 = nltk_calc_two_paper(corpus_title,
+                                        corpus_abstract,
+                                        pub,
+                                        unass_paper_id,
+                                        paper_id)
+                result_title.update(r1)
+                result_abstract.update(r2)
+                list_ans1.append(ans1)
+                list_ans2.append(ans2)
+    else:
+        for unass_author_id, unass_paper_id, the_author_name, author_rank in x:
+            for paper_id in existing_data_hash_by_name[the_author_name][unass_author_id]:
+                ans1,ans2, r1, r2 = nltk_calc_two_paper(corpus_title,
                                     corpus_abstract,
                                     pub,
                                     unass_paper_id,
                                     paper_id)
-            result_title.update(r1)
-            result_abstract.update(r2)
-            list_ans1.append(ans1)
-            list_ans2.append(ans2)
+                result_title.update(r1)
+                result_abstract.update(r2)
+                list_ans1.append(ans1)
+                list_ans2.append(ans2)
 
     print("pool",pool_id , "is finish.", "[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish lemma ]")
     return list_ans1, list_ans2, result_title, result_abstract
@@ -189,24 +209,41 @@ def nltk_tf(pub, data_model_dir, data_result_dir,
     result_abstract = {}
 
     if positive_example is not None:
+        num_pool = 8
+        len_data = len(positive_example)
+        print("Length of data", len_data)
+        pool = Pool()
+        step = len_data//num_pool
+
+        id = 0
+        sub_data = []
+        jobs = []
+        for data in positive_example:
+            sub_data.append(data)
+            if len(sub_data) >= step:
+                jobs.append(pool.apply_async(f1, args=(sub_data, existing_data_hash_by_name, corpus_title, corpus_abstract, pub, id, False)))
+                id += 1
+                sub_data = []
+
+        if len(sub_data) >= 0:
+            jobs.append(pool.apply_async(f1, args=(sub_data, existing_data_hash_by_name, corpus_title, corpus_abstract, pub, id, False)))
+            id += 1
+            sub_data = []
+
+        pool.close()
+        pool.join()
+
         list_ans1 = []
         list_ans2 = []
-        for unass_author_id, unass_paper_id, the_author_name, author_rank in tqdm(positive_example):
-            for paper_id in existing_data_hash_by_name[the_author_name][unass_author_id]:
-                #print('paper_id',paper_id, 'unass_paper_id', unass_paper_id)
-                ans1,ans2, r1, r2 = nltk_calc_two_paper(corpus_title,
-                                    corpus_abstract,
-                                    pub,
-                                    unass_paper_id,
-                                    paper_id)
-                result_title.update(r1)
-                result_abstract.update(r2)
-                list_ans1.append(ans1)
-                list_ans2.append(ans2)
+        for j in jobs:
+            a1,a2, r1, r2 = j.get()
+            list_ans1 += a1
+            list_ans2 += a2
+            result_title.update(r1)
+            result_abstract.update(r2)
+        
         print('mean ans1', np.mean(list_ans1))
         print('mean ans2', np.mean(list_ans2))
-    
-    
     
     num_pool = 8
     len_data = len(negative_example)
@@ -332,7 +369,7 @@ def gensim_train(docs, data_dir):
 def add_gensim_title(result, docs, paper_id_1, paper_id_2):
     tup = (paper_id_1, paper_id_2)
     vec1 = docs[paper_id_1]['doc2vec1']
-    vec2 = docs[paper_id_1]['doc2vec1']
+    vec2 = docs[paper_id_2]['doc2vec1']
     # print(len(vec1), len(vec2))
     ans = cosVector(vec1, vec2)
     result[tup] = ans
@@ -343,7 +380,7 @@ def add_gensim_title(result, docs, paper_id_1, paper_id_2):
 def add_gensim_abstract(result, docs, paper_id_1, paper_id_2):
     tup = (paper_id_1, paper_id_2)
     vec1 = docs[paper_id_1]['doc2vec2']
-    vec2 = docs[paper_id_1]['doc2vec2']
+    vec2 = docs[paper_id_2]['doc2vec2']
     # print(len(vec1), len(vec2))
     ans = cosVector(vec1, vec2)
     result[tup] = ans
@@ -362,6 +399,8 @@ def gensim_calc_two_paper(docs, paper_id_1, paper_id_2):
     result_abstract = {}
     ans1 = add_gensim_title(result_title, docs, paper_id_1, paper_id_2)
     ans2 = add_gensim_abstract(result_abstract, docs, paper_id_1, paper_id_2)
+    #print('an1', ans1)
+    #print('an2', ans2)
     return ans1, ans2, result_title, result_abstract
 
 def f2(negative_example, existing_data_hash_by_name, pub, pool_id):
@@ -370,7 +409,7 @@ def f2(negative_example, existing_data_hash_by_name, pub, pool_id):
     list_ans2 = []
     result_title = {}
     result_abstract = {}
-    if pool_id == 7:
+    if pool_id == 0:
         x = tqdm(negative_example)
     else:
         x = negative_example
@@ -387,19 +426,67 @@ def f2(negative_example, existing_data_hash_by_name, pub, pool_id):
     print("pool",pool_id , "is finish.", "[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish lemma ]")
     return list_ans1, list_ans2, result_title, result_abstract
 
-def gensim_result(pub, data_model_dir, data_result_dir, existing_data_hash_by_name,
-                         positive_example,
-                         negative_example):
 
-    model_title = gensim.models.doc2vec.Doc2Vec.load(data_model_dir + "title.model")
-    model_abstract = gensim.models.doc2vec.Doc2Vec.load(data_model_dir + "abstract.model")
-    print("[Gensim] each infer_vector")
-    for data in tqdm(pub):
+def f3(pub, file1, file2, pool_id):
+    print('pool_id', pool_id, 'begin')
+    if pool_id == 0:
+        x = tqdm(pub)
+    else:
+        x = pub
+    model_title = gensim.models.doc2vec.Doc2Vec.load(file1)
+    model_abstract = gensim.models.doc2vec.Doc2Vec.load(file2)
+    for data in x:
         if ('abstract' not in pub[data]) or (not pub[data]['abstract']):
             pub[data]['abstract'] = " "
         pub[data]['doc2vec1'] = model_title.infer_vector(pub[data]['title'].split())
         pub[data]['doc2vec2'] = model_abstract.infer_vector(
             (pub[data]['title'] + ' ' + pub[data]['abstract']).split())
+    
+    print("pool",pool_id , "is finish.", "[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish lemma ]")
+    return pub
+
+def gensim_result(pub, data_model_dir, data_result_dir, existing_data_hash_by_name,
+                         positive_example,
+                         negative_example):
+
+    #model_title = gensim.models.doc2vec.Doc2Vec.load(data_model_dir + "title.model")
+    #model_abstract = gensim.models.doc2vec.Doc2Vec.load(data_model_dir + "abstract.model")
+    print("[Gensim] each infer_vector")
+
+    num_pool = 4
+    len_data = len(pub)
+    print("Length of data", len_data)
+    pool = Pool()#train_pub
+    step = len_data//num_pool
+    id = 0
+    sub_data = {}
+    jobs = []
+    for data in pub:
+        sub_data[data] = pub[data]
+        if len(sub_data) >= step:
+            jobs.append(pool.apply_async(f3, args=(sub_data, data_model_dir + "title.model", data_model_dir + "abstract.model", id)))
+            id += 1
+            sub_data = {}
+    if len(sub_data) > 0:
+        jobs.append(pool.apply_async(f3, args=(sub_data, data_model_dir + "title.model", data_model_dir + "abstract.model", id)))
+        id += 1
+        sub_data = {}
+    
+    pool.close()
+    pool.join()
+
+    results = {}
+    for j in jobs:
+        x = j.get()
+        pub.update(x)
+
+    ''' for data in tqdm(pub):
+        if ('abstract' not in pub[data]) or (not pub[data]['abstract']):
+            pub[data]['abstract'] = " "
+        pub[data]['doc2vec1'] = model_title.infer_vector(pub[data]['title'].split())
+        pub[data]['doc2vec2'] = model_abstract.infer_vector(
+            (pub[data]['title'] + ' ' + pub[data]['abstract']).split())'''
+        
 
     print("[Gensim] calc two sim")
 
@@ -423,7 +510,7 @@ def gensim_result(pub, data_model_dir, data_result_dir, existing_data_hash_by_na
         print('mean ans2', np.mean(list_ans2))
     
     
-    num_pool = 8
+    num_pool = 4
     len_data = len(negative_example)
     print("Length of data", len_data)
     pool = Pool()
@@ -461,6 +548,7 @@ def gensim_result(pub, data_model_dir, data_result_dir, existing_data_hash_by_na
     print(len(result_title), type(result_title))
     #print(type(json.dumps(result_title)))
     print(len(result_abstract))
+    print('[save gensim result] it meybe need some time')
     with open(data_result_dir+'title.json', 'wb') as fresult_title:
         pickle.dump(result_title, fresult_title)
 
@@ -487,7 +575,9 @@ def train_gensim_model(file_name_unass_data, file_name_existing_data, file_name_
 
     data_model_dir = file_name_out + 'model_'
     # 训练模型
-    gensim_train(pub, data_model_dir)
+    if False:
+        gensim_train(pub, data_model_dir)
+
     # 预处理出结果,get_train_data阶段可以直接用
     data_result_dir = file_name_out + 'result_'
     gensim_result(pub, data_model_dir, data_result_dir, existing_data_hash_by_name,
@@ -497,7 +587,7 @@ def train_gensim_model(file_name_unass_data, file_name_existing_data, file_name_
 
 
 if __name__ == "__main__":
-    train_nltk = False
+    train_nltk = True
     train_gensim = True
 
     file_name_unass_data = 'data/track2/train/train_unass_data.json'
@@ -520,7 +610,7 @@ if __name__ == "__main__":
         existing_data_hash_by_name = {}
         for person_id in existing_data:
             real_name = existing_data[person_id]['name']
-            replaced_real_name = replace_str(real_name)
+            replaced_real_name = fix_name(real_name)
             if replaced_real_name not in existing_data_hash_by_name:
                 existing_data_hash_by_name[replaced_real_name] = {}
             existing_data_hash_by_name[replaced_real_name][person_id] = existing_data[person_id]['papers']
@@ -532,7 +622,7 @@ if __name__ == "__main__":
             author_rank = int(unass_data[0][9:])
             unass_author_id = unass_data[1]
             unass_paper_info = pub[unass_paper_id]
-            the_author_name = replace_str(unass_paper_info['authors'][author_rank]['name'])
+            the_author_name = fix_name(unass_paper_info['authors'][author_rank]['name'])
             # 正样本：同名作者
             positive_example.append([unass_author_id, unass_paper_id, the_author_name, author_rank])
             
@@ -543,11 +633,11 @@ if __name__ == "__main__":
                 diff_name_author_id.remove(unass_author_id)
                 # print(diff_name_author_id)
                 
-                #other_name_author_id = random.choice(diff_name_author_id)
-                #negative_example.append([unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id])
+                other_name_author_id = random.choice(diff_name_author_id)
+                negative_example.append([unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id])
 
-                for other_name_author_id in diff_name_author_id:
-                    negative_example.append([unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id])
+                #for other_name_author_id in diff_name_author_id:
+                #    negative_example.append([unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id])
         
         with open('data/track2/train/training_data.pkl', 'wb') as file:
             pickle.dump([existing_data_hash_by_name,positive_example,negative_example], file)
