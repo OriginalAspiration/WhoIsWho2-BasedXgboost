@@ -497,8 +497,8 @@ def train_gensim_model(file_name_unass_data, file_name_existing_data, file_name_
 
 
 if __name__ == "__main__":
-    train_nltk = True
-    train_gensim = False
+    train_nltk = False
+    train_gensim = True
 
     file_name_unass_data = 'data/track2/train/train_unass_data.json'
     file_name_existing_data = 'data/track2/train/train_existing_data.json'

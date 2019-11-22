@@ -14,6 +14,10 @@ from count_name import replace_str
 from get_train_data import compare_paper_with_set
 import multiprocessing
 from multiprocessing import Pool
+from sklearn.metrics import mean_squared_error
+from sklearn.datasets import make_friedman1
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.externals import joblib
 
 def load_nltk_result():
     with open('data/track2/test/test_pub_nltk_result_title.res', 'rb') as r1:
@@ -30,11 +34,12 @@ def load_gensim_result():
         gensum_abstract = pickle.load(r3)
     return gensim_title, gensum_abstract
 
-def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, model_name, pool_id):
+def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, model_name, model2_name, pool_id):
     print('pool_id', pool_id, 'begin')
     result_dict = {}
     error_times = 0
     bst = xgb.Booster(model_file=model_name)
+    est = joblib.load(model2_name)
     if pool_id == 3:
         x = tqdm(cna_valid_unass_competition)
     else:
@@ -55,7 +60,8 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, model_name, po
                 id_list.append(same_name_author_id)
 
             dtest=xgb.DMatrix(np.array(cna_x))
-            ypred=bst.predict(dtest)
+            #ypred = bst.predict(dtest) + est.predict(np.array(cna_x))
+            ypred =  est.predict(np.array(cna_x))
             predicted_author_id = id_list[np.argsort(ypred)[-1].item()]
             if predicted_author_id not in result_dict:
                 result_dict[predicted_author_id] = []
@@ -69,6 +75,7 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, model_name, po
 
 if __name__ == "__main__":
     model_name = 'xgb_1.model'
+    model2_name = 'gdbt_1.model'
     with open('data/track2/cna_data/cna_valid_unass_competition.json', 'r') as r:
         cna_valid_unass_competition = json.load(r)
     with open('data/track2/cna_data/cna_valid_pub.json', 'r') as r:
@@ -148,12 +155,12 @@ if __name__ == "__main__":
     for one_data in cna_valid_unass_competition:
         sub_data.append(one_data)
         if len(sub_data) >= step:
-            jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, model_name, id)))
+            jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, model_name,model2_name, id)))
             id += 1
             sub_data = []
 
     if len(sub_data) > 0:
-        jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, model_name, id)))
+        jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, model_name,model2_name, id)))
         id += 1
         sub_data = {}
     
