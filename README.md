@@ -1,5 +1,15 @@
 # Whoiswho 比赛
 
+Now I have add a model to compare with two papers, the F1 score on borad is 77.7.
+
+The run method:
+python split_data.py
+python format_process.py
+python paper2paper_xgb.py.py
+python get_train_data.py
+python train_xgb.py
+python script.py
+
 ## 赛道2
 赛道2需要将数据放置在data/track2/train和data/track2/cna_data目录下
 
