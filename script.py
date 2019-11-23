@@ -18,6 +18,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.datasets import make_friedman1
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.externals import joblib
+import paper2paper_xgb 
 
 def load_nltk_result():
     with open('data/track2/test/test_pub_nltk_result_title.res', 'rb') as r1:
@@ -33,6 +34,12 @@ def load_gensim_result():
     with open('data/track2/test/test_pub_gensim_result_abstract.json', 'rb') as r3:
         gensum_abstract = pickle.load(r3)
     return gensim_title, gensum_abstract
+
+def load_p2p_result():
+    with open('data/track2/test/test_pub_p2p_result_title.res', 'rb') as r1:
+        p2p_result = pickle.load(r1)
+    return p2p_result
+
 
 def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, model_name, model2_name, pool_id):
     print('pool_id', pool_id, 'begin')
@@ -55,13 +62,13 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, model_name, mo
         try:
             for same_name_author_id in whole_data_hash_by_name[replace_str(the_author_name)]:
                 x = compare_paper_with_set(whole_data_hash_by_name[replace_str(the_author_name)][same_name_author_id], 
-                                        unass_paper_id, test_alter_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract)
+                                        unass_paper_id, test_alter_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result)
                 cna_x.append( x )
                 id_list.append(same_name_author_id)
 
             dtest=xgb.DMatrix(np.array(cna_x))
-            ypred = bst.predict(dtest) + est.predict(np.array(cna_x))
-            #ypred =  est.predict(np.array(cna_x))
+            #ypred = bst.predict(dtest) + est.predict(np.array(cna_x))
+            ypred =  bst.predict(dtest)
             predicted_author_id = id_list[np.argsort(ypred)[-1].item()]
             if predicted_author_id not in result_dict:
                 result_dict[predicted_author_id] = []
@@ -141,6 +148,13 @@ if __name__ == "__main__":
     
     nltk_title, nltk_abstract = load_nltk_result()
     gensim_title, gensum_abstract = load_gensim_result()
+
+    if True:
+        #p2p_result(train_pub, model_namem, data_result_dir, existing_data_hash_by_name,  positive_example, negative_example, nltk_title, nltk_abstract, gensim_title, gensum_abstract):
+        data_result_dir = 'data/track2/test/test_pub_p2p_result_title.res'
+        paper2paper_xgb.p2p_result(test_pub, 'paper2paper_xgb_1.model', data_result_dir, whole_data_hash_by_name, None, negative_example, nltk_title, nltk_abstract, gensim_title, gensum_abstract)
+    
+    p2p_result = load_p2p_result()
     #gensim_title, gensum_abstract = None, None
 
     #cna_valid_unass_competition = cna_valid_unass_competition[:20]

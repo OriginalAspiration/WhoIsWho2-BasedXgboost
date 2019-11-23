@@ -159,7 +159,7 @@ def add_variate_year(result, paper_info_1, paper_info_2):
 
 def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank,
                                       nltk_title, nltk_abstract,
-                                      gensim_title, gensum_abstract):
+                                      gensim_title, gensum_abstract, p2p_result):
     result = []
     add_variate_same_author(result, paper_info_1, paper_info_2)  # 3
 
@@ -175,11 +175,13 @@ def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author
     add_lang_result(result, paper_id_1, paper_id_2, nltk_abstract) # 2
     add_lang_result(result, paper_id_1, paper_id_2, gensim_title, False) # 1
     add_lang_result(result, paper_id_1, paper_id_2, gensum_abstract, False) # 1
-    # 17
+    if p2p_result is not None:
+        add_lang_result(result, paper_id_1, paper_id_2, p2p_result, False) # 1
+    # 18
     return result
 
 def compare_paper_with_set(id_list, unass_paper_id, train_pub, author_rank, nltk_title, nltk_abstract,
-                                        gensim_title, gensum_abstract):
+                                        gensim_title, gensum_abstract, p2p_result):
     one_person_sim_list = []
     for paper_id in id_list:
         #print('paper_id',paper_id, 'unass_paper_id', unass_paper_id)
@@ -192,7 +194,7 @@ def compare_paper_with_set(id_list, unass_paper_id, train_pub, author_rank, nltk
                                         train_pub[paper_id],
                                         author_rank,
                                         nltk_title, nltk_abstract,
-                                        gensim_title, gensum_abstract))
+                                        gensim_title, gensum_abstract, p2p_result))
     x = np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list)
     
     x = np.concatenate([x, np.max(one_person_sim_list, axis=0)], 0)
@@ -221,6 +223,11 @@ def load_gensim_result():
         gensum_abstract = pickle.load(r3)
     return gensim_title, gensum_abstract
 
+def load_p2p_result():
+    with open('data/track2/train/train_pub_p2p_result_title.res', 'rb') as r1:
+        p2p_result = pickle.load(r1)
+    return p2p_result
+
 def f(negative_example, existing_data_hash_by_name, unass_paper_id, train_pub, 
         author_rank, pool_id):
     print('pool_id', pool_id, 'begin')
@@ -232,7 +239,7 @@ def f(negative_example, existing_data_hash_by_name, unass_paper_id, train_pub,
         x_negative_example = negative_example
     for unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id in x_negative_example:
         x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][other_name_author_id], unass_paper_id, 
-                                train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract)
+                                train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result)
         results.append(x)
 
     return results
@@ -243,6 +250,11 @@ if __name__ == "__main__":
     nltk_title, nltk_abstract = load_nltk_result()
     #gensim_title, gensum_abstract = None, None
     gensim_title, gensum_abstract = load_gensim_result()
+    p2p_result = load_p2p_result()
+    #for x in p2p_result:
+    #    if x[0] == 'AriXov6L':
+    #        print(x, p2p_result[x])
+    #assert False
 
     train_x = []
     train_y = []
@@ -258,7 +270,7 @@ if __name__ == "__main__":
     max_x = None
     for unass_author_id, unass_paper_id, the_author_name, author_rank in tqdm(positive_example):
         x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][unass_author_id], unass_paper_id, 
-                                train_pub, author_rank,  nltk_title, nltk_abstract, gensim_title, gensum_abstract)
+                                train_pub, author_rank,  nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result)
         train_x.append(x)
         train_y.append(1)
 
@@ -267,8 +279,10 @@ if __name__ == "__main__":
             max_x = x
         min_x = np.min( [x, min_x], axis=0 )
         max_x = np.max( [x, max_x], axis=0 )
+    
     print('min_x', min_x)
     print('max_x', max_x)
+    #assert False
     #assert False
     
     num_pool = 4
