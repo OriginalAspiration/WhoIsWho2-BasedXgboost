@@ -16,6 +16,8 @@ from multiprocessing import Pool
 import numpy as np
 from tqdm import tqdm
 
+from train_model import cosVector
+
 def add_variate_same_author(result, paper_info_1, paper_info_2):
     same_author = 0
     
@@ -157,9 +159,38 @@ def add_variate_year(result, paper_info_1, paper_info_2):
             print(type(paper_info_1['year']), type(paper_info_2['year']))
             assert False
 
+def get_kdd_vector(paper_id, author_rank, kdd_data, vector_dims):
+    key = paper_id + '-' + str(author_rank)
+    if key in kdd_data.keys():
+        vector = kdd_data[key]
+    else:
+        temp_vector_list = []
+        for i in range(100):
+            temp_key = paper_id + '-' + str(i)
+            if temp_key not in kdd_data:
+                break
+            temp_vector_list.append(kdd_data[temp_key])
+        if temp_vector_list:
+            vector = np.sum(temp_vector_list, axis=0)/len(temp_vector_list)
+        else:
+            vector = np.zeros(vector_dims)
+    return vector
+
+def add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank_1, kdd_data, kdd_dims):
+    # get author_rank_2
+    the_author_name = replace_str(paper_info_1['authors'][author_rank_1]['name'])
+    author_rank_2 = -1
+    for index, author_2 in enumerate(paper_info_2['authors']):
+        if replace_str(author_2['name']) == the_author_name:
+            author_rank_2 = index
+            break
+    vector_1 = get_kdd_vector(paper_id_1, author_rank_1, kdd_data, kdd_dims)
+    vector_2 = get_kdd_vector(paper_id_2, author_rank_2, kdd_data, kdd_dims)
+    result.append(cosVector(vector_1, vector_2))
+
 def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank,
-                                      nltk_title, nltk_abstract,
-                                      gensim_title, gensum_abstract, p2p_result):
+                      nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
+                      kdd_data=None, kdd_data_triplet=None):
     result = []
     add_variate_same_author(result, paper_info_1, paper_info_2)  # 3
 
@@ -177,11 +208,15 @@ def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author
     add_lang_result(result, paper_id_1, paper_id_2, gensum_abstract, False) # 1
     if p2p_result is not None:
         add_lang_result(result, paper_id_1, paper_id_2, p2p_result, False) # 1
-    # 18
+    if kdd_data is not None:
+        add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank, kdd_data, 100) # 1
+    if kdd_data_triplet is not None:
+        add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank, kdd_data_triplet, 64) # 1
+    # 20
     return result
 
 def compare_paper_with_set(id_list, unass_paper_id, train_pub, author_rank, nltk_title, nltk_abstract,
-                                        gensim_title, gensum_abstract, p2p_result):
+                           gensim_title, gensum_abstract, p2p_result, kdd_data=None, kdd_data_triplet=None):
     one_person_sim_list = []
     for paper_id in id_list:
         #print('paper_id',paper_id, 'unass_paper_id', unass_paper_id)
@@ -194,7 +229,8 @@ def compare_paper_with_set(id_list, unass_paper_id, train_pub, author_rank, nltk
                                         train_pub[paper_id],
                                         author_rank,
                                         nltk_title, nltk_abstract,
-                                        gensim_title, gensum_abstract, p2p_result))
+                                        gensim_title, gensum_abstract, p2p_result,
+                                        kdd_data, kdd_data_triplet))
     x = np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list)
     
     x = np.concatenate([x, np.max(one_person_sim_list, axis=0)], 0)
@@ -229,7 +265,7 @@ def load_p2p_result():
     return p2p_result
 
 def f(negative_example, existing_data_hash_by_name, unass_paper_id, train_pub, 
-        author_rank, pool_id):
+        author_rank, kdd_data, kdd_data_triplet, pool_id):
     print('pool_id', pool_id, 'begin')
     results = []
 
@@ -239,7 +275,8 @@ def f(negative_example, existing_data_hash_by_name, unass_paper_id, train_pub,
         x_negative_example = negative_example
     for unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id in x_negative_example:
         x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][other_name_author_id], unass_paper_id, 
-                                train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result)
+                                train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
+                                kdd_data, kdd_data_triplet)
         results.append(x)
 
     return results
@@ -264,13 +301,19 @@ if __name__ == "__main__":
     with open('data/track2/train/training_data.pkl', 'rb') as file:
         existing_data_hash_by_name,positive_example,negative_example = pickle.load(file)
 
+    with open('data/kdd_embedding/pid_order_to_features.pkl', 'rb') as rb:
+        kdd_data = pickle.load(rb)
+    with open('data/kdd_embedding/pid_order_to_features_triplet.pkl', 'rb') as rb:
+        kdd_data_triplet = pickle.load(rb)
+
 
     cnt = 0
     min_x = None
     max_x = None
     for unass_author_id, unass_paper_id, the_author_name, author_rank in tqdm(positive_example):
         x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][unass_author_id], unass_paper_id, 
-                                train_pub, author_rank,  nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result)
+                                   train_pub, author_rank,  nltk_title, nltk_abstract, gensim_title, gensum_abstract,
+                                   p2p_result, kdd_data, kdd_data_triplet)
         train_x.append(x)
         train_y.append(1)
 
@@ -297,13 +340,13 @@ if __name__ == "__main__":
         sub_data.append(one_data)
         if len(sub_data) >= step:
             jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
-                                train_pub, author_rank, id)))
+                                train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
             id += 1
             sub_data = []
 
     if len(sub_data) > 0:
         jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
-                    train_pub, author_rank, id)))
+                    train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
         id += 1
         sub_data = {}
     
