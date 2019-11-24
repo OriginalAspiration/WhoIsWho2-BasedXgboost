@@ -82,8 +82,10 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, model_name, mo
     return result_dict
 
 if __name__ == "__main__":
-    INIT_TEST_ALTER_PUB = True
-    INIT_P2P_XGB = False
+    UPDATE_KDD_BY_SELF = False
+    INIT_TEST_ALTER_PUB = False
+    INIT_P2P_XGB = True
+    TRAIN_MODEL = True
 
     model_name = 'xgb_1.model'
     model2_name = 'gdbt_1.model'
@@ -96,17 +98,23 @@ if __name__ == "__main__":
     with open('data/track2/cna_data/whole_author_profile.json', 'r') as r:
         whole_author_profile = json.load(r)
     #kdd data
-    with open('data/kdd_embedding/pid_order_to_features_whole.pkl', 'rb') as rb:
-        kdd_data = pickle.load(rb)
-    with open('data/kdd_embedding/pid_order_to_features_triplet_whole.pkl', 'rb') as rb:
-        kdd_data_triplet = pickle.load(rb)
-    with open('data/kdd_embedding/cna_pid_order_to_features.pkl', 'rb') as rb:
-        kdd_data_cna = pickle.load(rb)
-    with open('data/kdd_embedding/cna_pid_order_to_features_triplet.pkl', 'rb') as rb:
-        kdd_data_triplet_cna = pickle.load(rb)
+    if UPDATE_KDD_BY_SELF:
+        with open('data/kdd_embedding/pid_order_to_features_whole.pkl', 'rb') as rb:
+            kdd_data = pickle.load(rb)
+        with open('data/kdd_embedding/pid_order_to_features_triplet_whole.pkl', 'rb') as rb:
+            kdd_data_triplet = pickle.load(rb)
+        with open('data/kdd_embedding/cna_pid_order_to_features.pkl', 'rb') as rb:
+            kdd_data_cna = pickle.load(rb)
+        with open('data/kdd_embedding/cna_pid_order_to_features_triplet.pkl', 'rb') as rb:
+            kdd_data_triplet_cna = pickle.load(rb)
+        kdd_data.update(kdd_data_cna)
+        kdd_data_triplet.update(kdd_data_triplet_cna)
+    else:
+        with open('data/kdd_embedding/kdd_data_script.pkl', 'rb') as rb:
+            kdd_data = pickle.load(rb)
+        with open('data/kdd_embedding/kdd_data_triplet_script.pkl', 'rb') as rb:
+            kdd_data_triplet = pickle.load(rb)
     print('--- script.py load data finish ---')
-    kdd_data.update(kdd_data_cna)
-    kdd_data_triplet.update(kdd_data_triplet_cna)
 
     whole_data_hash_by_name = {}
     for person_id in whole_author_profile:
@@ -146,14 +154,14 @@ if __name__ == "__main__":
         test_alter_pub = multi_process_format_data(test_pub)
         with open(file_name_alter_pub, 'w', encoding='utf-8') as w:
             w.write(json.dumps(test_alter_pub))
+    else:
+        with open(file_name_alter_pub, 'r') as r:
+            test_alter_pub = json.load(r)
 
     #assert False
 
     #train_model
-    if True:
-        if not INIT_TEST_ALTER_PUB:
-            with open(file_name_alter_pub, 'r') as r:
-                test_alter_pub = json.load(r)
+    if TRAIN_MODEL:            
         if True:
             data_model_dir = 'data/track2/test/test_pub_nltk_' + 'model_'
             data_result_dir = 'data/track2/test/test_pub_nltk_' + 'result_'
