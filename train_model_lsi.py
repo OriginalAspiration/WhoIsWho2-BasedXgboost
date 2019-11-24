@@ -38,7 +38,7 @@ def fix_name(s):
 def get_doc_lsi_title(docs, dictionary, corpus_tfidf, corpus_lsi):
     vector_lsi_title = {}
     for data in tqdm(docs):
-        query_bow = dictionary.doc2bow(docs[data]['title'].split())
+        query_bow = dictionary.doc2bow(docs[data]['title'])
         query_tfidf = corpus_tfidf[query_bow]
         query_lsi = corpus_lsi[query_tfidf]
         query_list = [val for id, val in query_lsi]
@@ -49,7 +49,10 @@ def get_doc_lsi_title(docs, dictionary, corpus_tfidf, corpus_lsi):
 def get_doc_lsi_abstract(docs, dictionary, corpus_tfidf, corpus_lsi):
     vector_lsi_abstract = {}
     for data in tqdm(docs):
-        query_bow = dictionary.doc2bow((docs[data]['title'] + ' ' + docs[data]['abstract']).split())
+        if docs[data]['abstract'] == "":
+            docs[data]['abstract'] = []
+        # print(type(docs[data]['title']), " ", type(docs[data]['abstract']))
+        query_bow = dictionary.doc2bow(docs[data]['title'] + docs[data]['abstract'])
         query_tfidf = corpus_tfidf[query_bow]
         query_lsi = corpus_lsi[query_tfidf]
         query_list = [val for id, val in query_lsi]
@@ -113,10 +116,10 @@ def nltk_train_lsi(docs):
         if 'title' in docs[data]:
             whole_title.append(docs[data]['title'])
         if ('abstract' not in docs[data]) or (not docs[data]['abstract']):
-            docs[data]['abstract'] = " "
+            docs[data]['abstract'] = []
         whole_abstract.append(docs[data]['abstract'])
     texts_title = [
-        [word for word in document.split(" ")]
+        [word for word in document]
         for document in whole_title
     ]
     dictionary_title = corpora.Dictionary(texts_title)
@@ -137,7 +140,7 @@ def nltk_train_lsi(docs):
 
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish lsi vector ]")
     texts_abstract = [
-        [word for word in document.split(" ")]
+        [word for word in document]
         for document in whole_abstract
     ]
     dictionary_abstract = corpora.Dictionary(texts_abstract)
@@ -217,7 +220,7 @@ def nltk_get_sim(pub, data_model_dir, data_result_dir,
     result_abstract = {}
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "begin calc compare")
     if positive_example is not None:
-        num_pool = 1
+        num_pool = 4
         len_data = len(positive_example)
         print("Length of positive data", len_data)
         pool = Pool()
@@ -226,7 +229,7 @@ def nltk_get_sim(pub, data_model_dir, data_result_dir,
         id = 0
         sub_data = []
         jobs = []
-        for data in positive_example:
+        for data in tqdm(positive_example):
             sub_data.append(data)
             if len(sub_data) >= step:
                 jobs.append(pool.apply_async(f1, args=(
@@ -235,7 +238,7 @@ def nltk_get_sim(pub, data_model_dir, data_result_dir,
                 id += 1
                 sub_data = []
 
-        if len(sub_data) >= 0:
+        if len(sub_data) > 0:
             jobs.append(pool.apply_async(f1, args=(
                 sub_data, existing_data_hash_by_name,
                 pub, id, False)))
@@ -247,7 +250,7 @@ def nltk_get_sim(pub, data_model_dir, data_result_dir,
 
         list_ans1 = []
         list_ans2 = []
-        for j in jobs:
+        for j in tqdm(jobs):
             a1, a2, r1, r2 = j.get()
             list_ans1 += a1
             list_ans2 += a2
@@ -257,7 +260,7 @@ def nltk_get_sim(pub, data_model_dir, data_result_dir,
         print('mean ans1', np.mean(list_ans1))
         print('mean ans2', np.mean(list_ans2))
 
-    num_pool = 1
+    num_pool = 4
     len_data = len(negative_example)
     print("Length of negative data", len_data)
     pool = Pool()
@@ -266,7 +269,7 @@ def nltk_get_sim(pub, data_model_dir, data_result_dir,
     id = 0
     sub_data = []
     jobs = []
-    for data in negative_example:
+    for data in tqdm(negative_example):
         sub_data.append(data)
         if len(sub_data) >= step:
             jobs.append(pool.apply_async(f1, args=(
@@ -275,7 +278,7 @@ def nltk_get_sim(pub, data_model_dir, data_result_dir,
             id += 1
             sub_data = []
 
-    if len(sub_data) >= 0:
+    if len(sub_data) > 0:
         jobs.append(
             pool.apply_async(f1, args=(sub_data, existing_data_hash_by_name,
                                        pub, id)))
@@ -287,7 +290,7 @@ def nltk_get_sim(pub, data_model_dir, data_result_dir,
 
     list_ans1 = []
     list_ans2 = []
-    for j in jobs:
+    for j in tqdm(jobs):
         a1, a2, r1, r2 = j.get()
         list_ans1 += a1
         list_ans2 += a2
@@ -318,7 +321,7 @@ def train_nltk_lsi_model(file_name_pub, file_name_out,
 
     data_model_dir = file_name_out + 'vector_'
     # 训练模型
-    if True:
+    if False:
     # if not os.path.exists(data_model_dir+'title.vec'):
         vector_lsi_title, vector_lsi_abstract = nltk_train_lsi(pub)
         with open(data_model_dir + 'title.vec', 'wb') as file:
