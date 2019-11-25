@@ -190,7 +190,6 @@ def add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, 
 
 def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank,
                       nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
-                      lsi_title, lsi_abstract,
                       kdd_data=None, kdd_data_triplet=None):
     result = []
     add_variate_same_author(result, paper_info_1, paper_info_2)  # 3
@@ -209,9 +208,6 @@ def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author
     add_lang_result(result, paper_id_1, paper_id_2, gensum_abstract, False) # 1
     if p2p_result is not None:
         add_lang_result(result, paper_id_1, paper_id_2, p2p_result, False) # 1
-    add_lang_result(result, paper_id_1, paper_id_2, lsi_title)  # 2
-    add_lang_result(result, paper_id_1, paper_id_2, lsi_abstract)  # 2
-
     if kdd_data is not None:
         add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank, kdd_data, 100) # 1
     if kdd_data_triplet is not None:
@@ -219,11 +215,8 @@ def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author
     # 20
     return result
 
-
 def compare_paper_with_set(id_list, unass_paper_id, train_pub, author_rank, nltk_title, nltk_abstract,
-                           gensim_title, gensum_abstract, p2p_result,
-                           lsi_title, lsi_abstract,
-                           kdd_data=None, kdd_data_triplet=None):
+                           gensim_title, gensum_abstract, p2p_result, kdd_data=None, kdd_data_triplet=None):
     one_person_sim_list = []
     for paper_id in id_list:
         #print('paper_id',paper_id, 'unass_paper_id', unass_paper_id)
@@ -237,7 +230,6 @@ def compare_paper_with_set(id_list, unass_paper_id, train_pub, author_rank, nltk
                                         author_rank,
                                         nltk_title, nltk_abstract,
                                         gensim_title, gensum_abstract, p2p_result,
-                                        lsi_title, lsi_abstract,
                                         kdd_data, kdd_data_triplet))
     x = np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list)
     
@@ -257,15 +249,6 @@ def load_nltk_result():
     with open('data/track2/train/train_pub_nltk_result_abstract.res', 'rb') as r3:
         nltk_abstract = pickle.load(r3)
     return nltk_title, nltk_abstract
-
-
-def load_lsi_result():
-    with open('data/track2/train/train_pub_nltk_lsi_result_title.json', 'rb') as r1:
-        lsi_title = pickle.load(r1)
-
-    with open('data/track2/train/train_pub_nltk_lsi_result_abstract.json', 'rb') as r3:
-        lsi_abstract = pickle.load(r3)
-    return lsi_title, lsi_abstract
 
 
 def load_gensim_result():
@@ -292,9 +275,7 @@ def f(negative_example, existing_data_hash_by_name, unass_paper_id, train_pub,
         x_negative_example = negative_example
     for unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id in x_negative_example:
         x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][other_name_author_id], unass_paper_id, 
-                                train_pub, author_rank,
-                                nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
-                                lsi_title, lsi_abstract,
+                                train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
                                 kdd_data, kdd_data_triplet)
         results.append(x)
 
@@ -304,7 +285,6 @@ if __name__ == "__main__":
     with open('data/track2/train/train_pub_alter.json', 'r') as r:
         train_pub = json.load(r)
     nltk_title, nltk_abstract = load_nltk_result()
-    lsi_title, lsi_abstract = load_lsi_result()
     #gensim_title, gensum_abstract = None, None
     gensim_title, gensum_abstract = load_gensim_result()
     p2p_result = load_p2p_result()
@@ -319,7 +299,7 @@ if __name__ == "__main__":
 
 
     with open('data/track2/train/training_data.pkl', 'rb') as file:
-        existing_data_hash_by_name, positive_example, negative_example = pickle.load(file)
+        existing_data_hash_by_name,positive_example,negative_example = pickle.load(file)
 
     # with open('data/kdd_embedding/pid_order_to_features.pkl', 'rb') as rb:
     #     kdd_data = pickle.load(rb)
@@ -336,16 +316,15 @@ if __name__ == "__main__":
         #                            p2p_result, kdd_data, kdd_data_triplet)
         x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][unass_author_id], unass_paper_id, 
                                    train_pub, author_rank,  nltk_title, nltk_abstract, gensim_title, gensum_abstract,
-                                   p2p_result,
-                                   lsi_title, lsi_abstract)
+                                   p2p_result)
         train_x.append(x)
         train_y.append(1)
 
         if min_x is None:
             min_x = x
             max_x = x
-        min_x = np.min([x, min_x], axis=0)
-        max_x = np.max([x, max_x], axis=0)
+        min_x = np.min( [x, min_x], axis=0 )
+        max_x = np.max( [x, max_x], axis=0 )
     
     print('min_x', min_x)
     print('max_x', max_x)
