@@ -41,7 +41,7 @@ def load_p2p_result():
     return p2p_result
 
 
-def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, model_name, model2_name, kdd_data, kdd_data_triplet, pool_id):
+def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, model_name, model2_name, kdd_data=None, kdd_data_triplet=None, pool_id=0):
     print('pool_id', pool_id, 'begin')
     result_dict = {}
     error_times = 0
@@ -97,24 +97,24 @@ if __name__ == "__main__":
         whole_author_profile_pub = json.load(r)
     with open('data/track2/cna_data/whole_author_profile.json', 'r') as r:
         whole_author_profile = json.load(r)
-    #kdd data
-    if UPDATE_KDD_BY_SELF:
-        with open('data/kdd_embedding/pid_order_to_features_whole.pkl', 'rb') as rb:
-            kdd_data = pickle.load(rb)
-        with open('data/kdd_embedding/pid_order_to_features_triplet_whole.pkl', 'rb') as rb:
-            kdd_data_triplet = pickle.load(rb)
-        with open('data/kdd_embedding/cna_pid_order_to_features.pkl', 'rb') as rb:
-            kdd_data_cna = pickle.load(rb)
-        with open('data/kdd_embedding/cna_pid_order_to_features_triplet.pkl', 'rb') as rb:
-            kdd_data_triplet_cna = pickle.load(rb)
-        kdd_data.update(kdd_data_cna)
-        kdd_data_triplet.update(kdd_data_triplet_cna)
-    else:
-        with open('data/kdd_embedding/kdd_data_script.pkl', 'rb') as rb:
-            kdd_data = pickle.load(rb)
-        with open('data/kdd_embedding/kdd_data_triplet_script.pkl', 'rb') as rb:
-            kdd_data_triplet = pickle.load(rb)
-    print('--- script.py load data finish ---')
+    # #kdd data
+    # if UPDATE_KDD_BY_SELF:
+    #     with open('data/kdd_embedding/pid_order_to_features_whole.pkl', 'rb') as rb:
+    #         kdd_data = pickle.load(rb)
+    #     with open('data/kdd_embedding/pid_order_to_features_triplet_whole.pkl', 'rb') as rb:
+    #         kdd_data_triplet = pickle.load(rb)
+    #     with open('data/kdd_embedding/cna_pid_order_to_features.pkl', 'rb') as rb:
+    #         kdd_data_cna = pickle.load(rb)
+    #     with open('data/kdd_embedding/cna_pid_order_to_features_triplet.pkl', 'rb') as rb:
+    #         kdd_data_triplet_cna = pickle.load(rb)
+    #     kdd_data.update(kdd_data_cna)
+    #     kdd_data_triplet.update(kdd_data_triplet_cna)
+    # else:
+    #     with open('data/kdd_embedding/kdd_data_script.pkl', 'rb') as rb:
+    #         kdd_data = pickle.load(rb)
+    #     with open('data/kdd_embedding/kdd_data_triplet_script.pkl', 'rb') as rb:
+    #         kdd_data_triplet = pickle.load(rb)
+    # print('--- script.py load data finish ---')
 
     whole_data_hash_by_name = {}
     for person_id in whole_author_profile:
@@ -198,12 +198,14 @@ if __name__ == "__main__":
     for one_data in cna_valid_unass_competition:
         sub_data.append(one_data)
         if len(sub_data) >= step:
-            jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, model_name,model2_name, kdd_data, kdd_data_triplet, id)))
+            # jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, model_name,model2_name, kdd_data, kdd_data_triplet, id)))
+            jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, model_name,model2_name, None, None, id)))
             id += 1
             sub_data = []
 
     if len(sub_data) > 0:
-        jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, model_name,model2_name, kdd_data, kdd_data_triplet, id)))
+        # jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, model_name,model2_name, kdd_data, kdd_data_triplet, id)))
+        jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, model_name,model2_name, None, None, id)))
         id += 1
         sub_data = {}
     
