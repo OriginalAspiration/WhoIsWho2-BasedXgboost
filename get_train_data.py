@@ -254,10 +254,10 @@ def load_nltk_result():
 
 
 def load_gensim_result():
-    with open('data/track2/train/train_pub_gensim_result_title.json', 'rb') as r1:
+    with open('data/track2/train/train_pub_gensim_result_title.res', 'rb') as r1:
         gensim_title = pickle.load(r1)
 
-    with open('data/track2/train/train_pub_gensim_result_abstract.json', 'rb') as r3:
+    with open('data/track2/train/train_pub_gensim_result_abstract.res', 'rb') as r3:
         gensum_abstract = pickle.load(r3)
     return gensim_title, gensum_abstract
 
