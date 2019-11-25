@@ -18,6 +18,7 @@ from scipy.spatial.distance import pdist
 
 
 def cosVector(x, y):
+    # print(len(x), len(y))
     t = pdist(np.vstack([x, y]), 'cosine')[0]
     return float(1.0 - t)
 
@@ -38,10 +39,12 @@ def fix_name(s):
 def get_doc_lsi_title(docs, dictionary, corpus_tfidf, corpus_lsi):
     vector_lsi_title = {}
     for data in tqdm(docs):
+        query_list = [1e-9 for i in range(50)]
         query_bow = dictionary.doc2bow(docs[data]['title'])
         query_tfidf = corpus_tfidf[query_bow]
         query_lsi = corpus_lsi[query_tfidf]
-        query_list = [val for id, val in query_lsi]
+        for id, val in query_lsi:
+            query_list[id] = val
         vector_lsi_title[data] = query_list
     return vector_lsi_title
 
@@ -49,13 +52,15 @@ def get_doc_lsi_title(docs, dictionary, corpus_tfidf, corpus_lsi):
 def get_doc_lsi_abstract(docs, dictionary, corpus_tfidf, corpus_lsi):
     vector_lsi_abstract = {}
     for data in tqdm(docs):
+        query_list = [1e-9 for i in range(200)]
         if docs[data]['abstract'] == "":
             docs[data]['abstract'] = []
         # print(type(docs[data]['title']), " ", type(docs[data]['abstract']))
         query_bow = dictionary.doc2bow(docs[data]['title'] + docs[data]['abstract'])
         query_tfidf = corpus_tfidf[query_bow]
         query_lsi = corpus_lsi[query_tfidf]
-        query_list = [val for id, val in query_lsi]
+        for id, val in query_lsi:
+            query_list[id] = val
         vector_lsi_abstract[data] = query_list
     return vector_lsi_abstract
 
@@ -117,7 +122,7 @@ def nltk_train_lsi(docs):
             whole_title.append(docs[data]['title'])
         if ('abstract' not in docs[data]) or (not docs[data]['abstract']):
             docs[data]['abstract'] = []
-        whole_abstract.append(docs[data]['abstract'])
+        whole_abstract.append(docs[data]['title'] + docs[data]['abstract'])
     texts_title = [
         [word for word in document]
         for document in whole_title
@@ -139,6 +144,7 @@ def nltk_train_lsi(docs):
                                          corpus_lsi_title)
 
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish lsi vector ]")
+
     texts_abstract = [
         [word for word in document]
         for document in whole_abstract
@@ -146,7 +152,7 @@ def nltk_train_lsi(docs):
     dictionary_abstract = corpora.Dictionary(texts_abstract)
     corpus_abstract = [dictionary_abstract.doc2bow(text) for text in texts_abstract]
     model_tfidf_abstract = models.TfidfModel(corpus_abstract)
-    corpus_tfidf_abstract = model_tfidf_title[corpus_abstract]
+    corpus_tfidf_abstract = model_tfidf_abstract[corpus_abstract]
     # corpus_tfidf_abstract.save(data_dir + 'tfidf_abstract.model')
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish tfidf abstract ]")
     corpus_lsi_abstract = models.LsiModel(corpus_tfidf_abstract,
@@ -155,9 +161,9 @@ def nltk_train_lsi(docs):
     # corpus_lsi_abstract.save(data_dir + 'lsi_abstract.model')
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish lsi abstract ]")
     vector_lsi_abstract = get_doc_lsi_abstract(docs,
-                                               dictionary_title,
+                                               dictionary_abstract,
                                                model_tfidf_abstract,
-                                               corpus_lsi_title)
+                                               corpus_lsi_abstract)
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish lsi vector]")
     return vector_lsi_title, vector_lsi_abstract
 
@@ -165,6 +171,7 @@ def nltk_train_lsi(docs):
 
 def f1(negative_example, existing_data_hash_by_name, pub,
        pool_id, is_negative=True):
+    print("is_negative", is_negative)
     print('pool_id', pool_id, 'begin')
     list_ans1 = []
     list_ans2 = []
@@ -220,83 +227,94 @@ def nltk_get_sim(pub, data_model_dir, data_result_dir,
     result_abstract = {}
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "begin calc compare")
     if positive_example is not None:
-        num_pool = 4
+        # num_pool = 4
         len_data = len(positive_example)
         print("Length of positive data", len_data)
-        pool = Pool()
-        step = len_data // num_pool
+        # pool = Pool()
+        # step = len_data // num_pool
 
-        id = 0
-        sub_data = []
-        jobs = []
-        for data in tqdm(positive_example):
-            sub_data.append(data)
-            if len(sub_data) >= step:
-                jobs.append(pool.apply_async(f1, args=(
-                    sub_data, existing_data_hash_by_name,
-                    pub, id, False)))
-                id += 1
-                sub_data = []
-
-        if len(sub_data) > 0:
-            jobs.append(pool.apply_async(f1, args=(
-                sub_data, existing_data_hash_by_name,
-                pub, id, False)))
-            id += 1
-            sub_data = []
-
-        pool.close()
-        pool.join()
+        # id = 0
+        # sub_data = []
+        # jobs = []
+        # for data in tqdm(positive_example):
+        #     sub_data.append(data)
+        #     if len(sub_data) >= step:
+        #         jobs.append(pool.apply_async(f1, args=(
+        #             sub_data, existing_data_hash_by_name,
+        #             pub, id, False)))
+        #         id += 1
+        #         sub_data = []
+        #
+        # if len(sub_data) > 0:
+        #     jobs.append(pool.apply_async(f1, args=(
+        #         sub_data, existing_data_hash_by_name,
+        #         pub, id, False)))
+        #     id += 1
+        #     sub_data = []
+        #
+        # pool.close()
+        # pool.join()
 
         list_ans1 = []
         list_ans2 = []
-        for j in tqdm(jobs):
-            a1, a2, r1, r2 = j.get()
-            list_ans1 += a1
-            list_ans2 += a2
-            result_title.update(r1)
-            result_abstract.update(r2)
-
-        print('mean ans1', np.mean(list_ans1))
-        print('mean ans2', np.mean(list_ans2))
-
-    num_pool = 4
-    len_data = len(negative_example)
-    print("Length of negative data", len_data)
-    pool = Pool()
-    step = len_data // num_pool
-
-    id = 0
-    sub_data = []
-    jobs = []
-    for data in tqdm(negative_example):
-        sub_data.append(data)
-        if len(sub_data) >= step:
-            jobs.append(pool.apply_async(f1, args=(
-                sub_data, existing_data_hash_by_name,
-                pub, id)))
-            id += 1
-            sub_data = []
-
-    if len(sub_data) > 0:
-        jobs.append(
-            pool.apply_async(f1, args=(sub_data, existing_data_hash_by_name,
-                                       pub, id)))
-        id += 1
-        sub_data = []
-
-    pool.close()
-    pool.join()
-
-    list_ans1 = []
-    list_ans2 = []
-    for j in tqdm(jobs):
-        a1, a2, r1, r2 = j.get()
+        # for j in tqdm(jobs):
+        #     a1, a2, r1, r2 = j.get()
+        #     list_ans1 += a1
+        #     list_ans2 += a2
+        #     result_title.update(r1)
+        #     result_abstract.update(r2)
+        a1, a2, r1, r2 = f1(positive_example, existing_data_hash_by_name,
+                 pub, 0, False)
         list_ans1 += a1
         list_ans2 += a2
         result_title.update(r1)
         result_abstract.update(r2)
 
+        print('mean ans1', np.mean(list_ans1))
+        print('mean ans2', np.mean(list_ans2))
+
+    # num_pool = 4
+    len_data = len(negative_example)
+    print("Length of negative data", len_data)
+    # pool = Pool()
+    # step = len_data // num_pool
+
+    # id = 0
+    # sub_data = []
+    # jobs = []
+    # for data in tqdm(negative_example):
+    #     sub_data.append(data)
+    #     if len(sub_data) >= step:
+    #         jobs.append(pool.apply_async(f1, args=(
+    #             sub_data, existing_data_hash_by_name,
+    #             pub, id)))
+    #         id += 1
+    #         sub_data = []
+    #
+    # if len(sub_data) > 0:
+    #     jobs.append(
+    #         pool.apply_async(f1, args=(sub_data, existing_data_hash_by_name,
+    #                                    pub, id)))
+    #     id += 1
+    #     sub_data = []
+    #
+    # pool.close()
+    # pool.join()
+    #
+    list_ans1 = []
+    list_ans2 = []
+    # for j in tqdm(jobs):
+    #     a1, a2, r1, r2 = j.get()
+    #     list_ans1 += a1
+    #     list_ans2 += a2
+    #     result_title.update(r1)
+    #     result_abstract.update(r2)
+    a1, a2, r1, r2 = f1(negative_example, existing_data_hash_by_name,
+                                                             pub, 0)
+    list_ans1 += a1
+    list_ans2 += a2
+    result_title.update(r1)
+    result_abstract.update(r2)
     print('mean ans1', np.mean(list_ans1))
     print('mean ans2', np.mean(list_ans2))
 
@@ -311,6 +329,37 @@ def nltk_get_sim(pub, data_model_dir, data_result_dir,
     print("[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[end nltk_lsi]")
     return None
 
+
+def test_vector(data_model_dir):
+    with open(data_model_dir + 'title.vec', 'rb') as fresult_title:
+        vector_title = pickle.load(fresult_title)
+    with open(data_model_dir + 'abstract.vec', 'rb') as fresult_abstract:
+        vector_abstract = pickle.load(fresult_abstract)
+    for data in tqdm(vector_title):
+        if len(vector_title[data]) != 50:
+            print(data, type(vector_title[data]), len(vector_title[data]))
+    for data in tqdm(vector_abstract):
+        if len(vector_abstract[data]) != 200:
+            print(data, type(vector_abstract[data]), len(vector_abstract[data]))
+
+
+def test_vector_sim(data_result_dir):
+    with open(data_result_dir + 'title.res', 'rb') as fresult_title:
+        vector_title = pickle.load(fresult_title)
+    with open(data_result_dir + 'abstract.res', 'rb') as fresult_abstract:
+        vector_abstract = pickle.load(fresult_abstract)
+    total = 0
+    for data in tqdm(vector_title):
+        print(data, vector_title[data])
+        total += 1
+        if total == 20:
+            break
+    total = 0
+    for data in tqdm(vector_abstract):
+        print(data, vector_abstract[data])
+        total += 1
+        if total == 20:
+            break
 
 def train_nltk_lsi_model(file_name_pub, file_name_out,
                          existing_data_hash_by_name,
@@ -328,12 +377,14 @@ def train_nltk_lsi_model(file_name_pub, file_name_out,
             pickle.dump(vector_lsi_title, file)
         with open(data_model_dir + 'abstract.vec', 'wb') as file:
             pickle.dump(vector_lsi_abstract, file)
+        test_vector(data_model_dir)
     # 预处理出结果,get_train_data阶段可以直接用
     data_result_dir = file_name_out + 'result_'
-    nltk_get_sim(pub, data_model_dir, data_result_dir,
-                 existing_data_hash_by_name,
-                 positive_example,
-                 negative_example)
+    # nltk_get_sim(pub, data_model_dir, data_result_dir,
+    #              existing_data_hash_by_name,
+    #              positive_example,
+    #              negative_example)
+    test_vector_sim(data_result_dir)
 
 
 if __name__ == "__main__":
