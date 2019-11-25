@@ -14,7 +14,9 @@ import os
 import multiprocessing
 from multiprocessing import Pool
 
-os.environ['NLTK_DATA']="/mnt/md0/lichaochao/rqy/nltk"
+
+lemmatizer = WordNetLemmatizer()
+
 
 def get_wordnet_pos(word):
     """Map POS tag to first character lemmatize() accepts"""
@@ -25,11 +27,12 @@ def get_wordnet_pos(word):
                 "R": wordnet.ADV}
     return tag_dict.get(tag, wordnet.NOUN)
 
-lemmatizer = WordNetLemmatizer()
+
 # 词性还原
 def for_keywords_change_word_by_lemmatize(doc):
     word_list = nltk.word_tokenize(doc)
     return [lemmatizer.lemmatize(w.lower(), get_wordnet_pos(w)) for w in word_list]
+
 
 def for_keywords_remove_stopword(doc):
     word_split = doc
@@ -53,14 +56,16 @@ def transform_sentence(doc):
     if doc is None:
         return ""
     #print('doc', doc)
-    doc = doc.strip().replace('_', '').replace('-', '').replace('/sub', '').replace(' sub ', " ")
+    doc = doc.strip().replace('_', '').replace(
+        '-', '').replace('/sub', '').replace(' sub ', " ")
     doc = doc.replace("ABSTRACTS", '')
     doc = for_keywords_change_word_by_lemmatize(doc)
     doc = for_keywords_remove_stopword(doc)
     #print('doc', doc)
     return doc
 
-def transform_pub(docs, pool_id):
+
+def transform_pub(docs, pool_id=0):
     print('pool_id', pool_id, 'begin')
     if pool_id == 0:
         x = tqdm(docs)
@@ -79,7 +84,8 @@ def transform_pub(docs, pool_id):
             new_keywords_list = []
 
             if 'keywords' in docs[data]:
-                new_keywords_list = [for_keywords_change_word_by_lemmatize(keywords) for keywords in docs[data]['keywords']]
+                new_keywords_list = [for_keywords_change_word_by_lemmatize(
+                    keywords) for keywords in docs[data]['keywords']]
             else:
                 new_keywords_list = []
             new_docs[data]['keywords'] = new_keywords_list
@@ -91,15 +97,17 @@ def transform_pub(docs, pool_id):
                 new_docs[data]['abstract'] = []
         except:
             print('data', data, 'is warn')
-    print("pool",pool_id , "is finish.", "[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish lemma ]")
+    print("pool", pool_id, "is finish.", "[", time.strftime(
+        "%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish lemma ]")
     return new_docs
 
-def save_format_data(pub, save_path):
-    num_pool = 8
+
+def multi_process_format_data(pub, num_pool=8):
+    print('--- multi_process_format_data START ---')
     len_data = len(pub)
     print("Length of data", len_data)
-    pool = Pool()#train_pub
-    step = len_data//num_pool
+    pool = Pool()  # train_pub
+    step = len_data // num_pool
     id = 0
     sub_data = {}
     jobs = []
@@ -113,7 +121,7 @@ def save_format_data(pub, save_path):
         jobs.append(pool.apply_async(transform_pub, args=(sub_data, id)))
         id += 1
         sub_data = {}
-    
+
     pool.close()
     pool.join()
 
@@ -122,11 +130,14 @@ def save_format_data(pub, save_path):
         x = j.get()
         results.update(x)
 
-    with open(save_path, 'w', encoding='utf-8') as w:
-        w.write(json.dumps(results))
+    return results
+
 
 if __name__ == '__main__':
-    change_lemma = True
     with open('data/track2/train/train_pub.json', 'r') as r:
         train_pub = json.load(r)
-        save_format_data(train_pub, 'data/track2/train/train_pub_alter.json')
+
+    new_pub = multi_process_format_data(train_pub)
+
+    with open(save_path, 'w', encoding='utf-8') as w:
+        w.write(json.dumps(results))

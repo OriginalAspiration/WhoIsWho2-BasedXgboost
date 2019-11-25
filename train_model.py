@@ -294,16 +294,10 @@ def nltk_tf(pub, data_model_dir, data_result_dir,
     return None
 
 
-def train_nltk_model(file_name_unass_data, file_name_existing_data, file_name_pub, file_name_out,
+def train_nltk_model(pub, file_name_out,
                         existing_data_hash_by_name,
                          positive_example,
                          negative_example):
-    with open(file_name_unass_data, 'r') as r:
-        unass_data = json.load(r)
-
-    with open(file_name_existing_data, 'r') as r:
-        existing_data = json.load(r)
-
     with open(file_name_pub, 'r') as r:
         pub = json.load(r)
 
@@ -558,32 +552,57 @@ def gensim_result(pub, data_model_dir, data_result_dir, existing_data_hash_by_na
     return
 
 
-def train_gensim_model(file_name_unass_data, file_name_existing_data, file_name_pub, file_name_out,
+def train_gensim_model(pub_original, file_name_out,
                         existing_data_hash_by_name,
                          positive_example,
                          negative_example):
-    # if os.path.exists(file_name_out+'map_title.model'):
-    #     return
-    with open(file_name_unass_data, 'r') as r:
-        unass_data = json.load(r)
-
-    with open(file_name_existing_data, 'r') as r:
-        existing_data = json.load(r)
-
-    with open(file_name_pub, 'r') as r:
-        pub = json.load(r)
 
     data_model_dir = file_name_out + 'model_'
     # 训练模型
     if False:
-        gensim_train(pub, data_model_dir)
+        gensim_train(pub_original, data_model_dir)
 
     # 预处理出结果,get_train_data阶段可以直接用
     data_result_dir = file_name_out + 'result_'
-    gensim_result(pub, data_model_dir, data_result_dir, existing_data_hash_by_name,
+    gensim_result(pub_original, data_model_dir, data_result_dir, existing_data_hash_by_name,
                          positive_example,
                          negative_example)
     return
+
+
+def sample_data(unass_data, existing_data, pub, seed=2333):
+    random.seed(seed)
+    positive_example = []
+    negative_example = []
+    existing_data_hash_by_name = {}
+    for person_id in existing_data:
+        real_name = existing_data[person_id]['name']
+        replaced_real_name = fix_name(real_name)
+        if replaced_real_name not in existing_data_hash_by_name:
+            existing_data_hash_by_name[replaced_real_name] = {}
+        existing_data_hash_by_name[replaced_real_name][person_id] = existing_data[person_id]['papers']
+
+    print('unass_data', len(unass_data))
+    for unass_data in tqdm(unass_data):
+        unass_paper_id = unass_data[0][:8]
+        author_rank = int(unass_data[0][9:])
+        unass_author_id = unass_data[1]
+        unass_paper_info = pub[unass_paper_id]
+        the_author_name = fix_name(unass_paper_info['authors'][author_rank]['name'])
+        # 正样本：同名作者
+        positive_example.append([unass_author_id, unass_paper_id, the_author_name, author_rank])
+        
+
+        # 随机负样本： 不同id作者
+        if len(existing_data_hash_by_name[the_author_name]) > 1:
+            diff_name_author_id = list(existing_data_hash_by_name[the_author_name])
+            diff_name_author_id.remove(unass_author_id)
+            # print(diff_name_author_id)
+            
+            other_name_author_id = random.choice(diff_name_author_id)
+            negative_example.append([unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id])
+
+    return existing_data_hash_by_name, positive_example, negative_example
 
 
 if __name__ == "__main__":
@@ -593,7 +612,6 @@ if __name__ == "__main__":
     file_name_unass_data = 'data/track2/train/train_unass_data.json'
     file_name_existing_data = 'data/track2/train/train_existing_data.json'
     file_name_pub = 'data/track2/train/train_pub_alter.json'
-    random.seed(2333)
 
     if train_nltk or train_gensim:
         with open(file_name_unass_data, 'r') as r:
@@ -604,63 +622,26 @@ if __name__ == "__main__":
 
         with open(file_name_pub, 'r') as r:
             pub = json.load(r)
-        
-        positive_example = []
-        negative_example = []
-        existing_data_hash_by_name = {}
-        for person_id in existing_data:
-            real_name = existing_data[person_id]['name']
-            replaced_real_name = fix_name(real_name)
-            if replaced_real_name not in existing_data_hash_by_name:
-                existing_data_hash_by_name[replaced_real_name] = {}
-            existing_data_hash_by_name[replaced_real_name][person_id] = existing_data[person_id]['papers']
 
-        total = 0
-        print('unass_data', len(unass_data))
-        for unass_data in tqdm(unass_data):
-            unass_paper_id = unass_data[0][:8]
-            author_rank = int(unass_data[0][9:])
-            unass_author_id = unass_data[1]
-            unass_paper_info = pub[unass_paper_id]
-            the_author_name = fix_name(unass_paper_info['authors'][author_rank]['name'])
-            # 正样本：同名作者
-            positive_example.append([unass_author_id, unass_paper_id, the_author_name, author_rank])
-            
+        existing_data_hash_by_name, positive_example, negative_example = sample_data(unass_data, existing_data, pub, seed=2333)
 
-            # 随机负样本： 不同id作者
-            if len(existing_data_hash_by_name[the_author_name]) > 1:
-                diff_name_author_id = list(existing_data_hash_by_name[the_author_name])
-                diff_name_author_id.remove(unass_author_id)
-                # print(diff_name_author_id)
-                
-                other_name_author_id = random.choice(diff_name_author_id)
-                negative_example.append([unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id])
-
-                #for other_name_author_id in diff_name_author_id:
-                #    negative_example.append([unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id])
-        
         with open('data/track2/train/training_data.pkl', 'wb') as file:
-            pickle.dump([existing_data_hash_by_name,positive_example,negative_example], file)
+            pickle.dump([existing_data_hash_by_name, positive_example, negative_example], file)
 
-    
     if train_nltk:
         out_file_name = 'data/track2/train/train_pub_nltk_'
-        train_nltk_model(file_name_unass_data,
-                         file_name_existing_data,
-                         file_name_pub,
+        train_nltk_model(pub,
                          out_file_name,
                          existing_data_hash_by_name,
                          positive_example,
                          negative_example)
-    
 
-
-    file_name_pub = 'data/track2/train/train_pub.json'
+    file_name_pub_original = 'data/track2/train/train_pub.json'
+    with open(file_name_pub_original, 'r') as r:
+            pub_original = json.load(r)
     if train_gensim:
         out_file_name = 'data/track2/train/train_pub_gensim_'
-        train_gensim_model(file_name_unass_data,
-                           file_name_existing_data,
-                           file_name_pub,
+        train_gensim_model(pub_original,
                            out_file_name,
                         existing_data_hash_by_name,
                         positive_example,
