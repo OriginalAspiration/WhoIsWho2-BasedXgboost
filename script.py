@@ -1,3 +1,6 @@
+import sys
+sys.path.append("/home/rqy/.local/lib/python3.5/site-packages")
+
 import time
 import json
 import pickle
@@ -46,8 +49,8 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, model_name, mo
     result_dict = {}
     error_times = 0
     bst = xgb.Booster(model_file=model_name)
-    est = joblib.load(model2_name)
-    if pool_id == 3:
+
+    if pool_id == 0:
         x = tqdm(cna_valid_unass_competition)
     else:
         x = cna_valid_unass_competition
@@ -82,10 +85,10 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, model_name, mo
     return result_dict
 
 if __name__ == "__main__":
-    UPDATE_KDD_BY_SELF = False
+    UPDATE_KDD_BY_SELF = True
     INIT_TEST_ALTER_PUB = False
-    INIT_P2P_XGB = True
-    TRAIN_MODEL = True
+    INIT_P2P_XGB = False
+    TRAIN_MODEL = False
 
     model_name = 'xgb_1.model'
     model2_name = 'gdbt_1.model'
