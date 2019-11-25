@@ -289,7 +289,7 @@ def load_p2p_result():
     return p2p_result
 
 def f(negative_example, existing_data_hash_by_name, unass_paper_id, train_pub, 
-        author_rank, kdd_data, kdd_data_triplet, pool_id):
+      author_rank, kdd_data=None, kdd_data_triplet=None, pool_id=0):
     print('pool_id', pool_id, 'begin')
     results = []
 
@@ -325,10 +325,10 @@ if __name__ == "__main__":
     with open('data/track2/train/training_data.pkl', 'rb') as file:
         existing_data_hash_by_name,positive_example,negative_example = pickle.load(file)
 
-    with open('data/kdd_embedding/pid_order_to_features.pkl', 'rb') as rb:
-        kdd_data = pickle.load(rb)
-    with open('data/kdd_embedding/pid_order_to_features_triplet.pkl', 'rb') as rb:
-        kdd_data_triplet = pickle.load(rb)
+    # with open('data/kdd_embedding/pid_order_to_features.pkl', 'rb') as rb:
+    #     kdd_data = pickle.load(rb)
+    # with open('data/kdd_embedding/pid_order_to_features_triplet.pkl', 'rb') as rb:
+    #     kdd_data_triplet = pickle.load(rb)
 
     '''max_t =0
     min_t =0
@@ -366,9 +366,12 @@ if __name__ == "__main__":
     count = 0'''
     
     for unass_author_id, unass_paper_id, the_author_name, author_rank in tqdm(positive_example):
+        # x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][unass_author_id], unass_paper_id, 
+        #                            train_pub, author_rank,  nltk_title, nltk_abstract, gensim_title, gensum_abstract,
+        #                            p2p_result, kdd_data, kdd_data_triplet)
         x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][unass_author_id], unass_paper_id, 
                                    train_pub, author_rank,  nltk_title, nltk_abstract, gensim_title, gensum_abstract,
-                                   p2p_result, kdd_data, kdd_data_triplet)
+                                   p2p_result)
         train_x.append(x)
         train_y.append(1)
         
@@ -403,14 +406,18 @@ if __name__ == "__main__":
     for one_data in negative_example:
         sub_data.append(one_data)
         if len(sub_data) >= step:
+            # jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
+            #                     train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
             jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
-                                train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
+                                train_pub, author_rank, None, None, id)))
             id += 1
             sub_data = []
 
     if len(sub_data) > 0:
+        # jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
+        #             train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
         jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
-                    train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
+                    train_pub, author_rank, None, None, id)))
         id += 1
         sub_data = {}
     
