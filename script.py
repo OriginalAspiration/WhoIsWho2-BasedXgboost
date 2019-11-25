@@ -137,6 +137,10 @@ if __name__ == "__main__":
             kdd_data_triplet_cna = pickle.load(rb)
         kdd_data.update(kdd_data_cna)
         kdd_data_triplet.update(kdd_data_triplet_cna)
+        with open('data/kdd_embedding/kdd_data_script.pkl', 'wb') as wb:
+            pickle.dump(kdd_data, wb)
+        with open('data/kdd_embedding/kdd_data_triplet_script.pkl', 'wb') as wb:
+            pickle.dump(kdd_data_triplet, wb)
     else:
         with open('data/kdd_embedding/kdd_data_script.pkl', 'rb') as rb:
             kdd_data = pickle.load(rb)
