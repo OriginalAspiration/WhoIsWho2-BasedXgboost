@@ -186,7 +186,9 @@ def add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, 
             break
     vector_1 = get_kdd_vector(paper_id_1, author_rank_1, kdd_data, kdd_dims)
     vector_2 = get_kdd_vector(paper_id_2, author_rank_2, kdd_data, kdd_dims)
-    result.append(cosVector(vector_1, vector_2))
+    # result.append(cosVector(vector_1, vector_2))
+    result.append(np.sum((vector_1 - vector_2) ** 2)) # euclidean
+
 
 def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank,
                       nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
@@ -287,7 +289,8 @@ if __name__ == "__main__":
     nltk_title, nltk_abstract = load_nltk_result()
     #gensim_title, gensum_abstract = None, None
     gensim_title, gensum_abstract = load_gensim_result()
-    p2p_result = load_p2p_result()
+    # p2p_result = load_p2p_result()
+    p2p_result = None
     #for x in p2p_result:
     #    if x[0] == 'AriXov6L':
     #        print(x, p2p_result[x])
@@ -301,22 +304,19 @@ if __name__ == "__main__":
     with open('data/track2/train/training_data.pkl', 'rb') as file:
         existing_data_hash_by_name,positive_example,negative_example = pickle.load(file)
 
-    # with open('data/kdd_embedding/pid_order_to_features.pkl', 'rb') as rb:
-    #     kdd_data = pickle.load(rb)
-    # with open('data/kdd_embedding/pid_order_to_features_triplet.pkl', 'rb') as rb:
-    #     kdd_data_triplet = pickle.load(rb)
+    with open('data/kdd_embedding/pid_order_to_features.pkl', 'rb') as rb:
+        kdd_data = pickle.load(rb)
+    with open('data/kdd_embedding/pid_order_to_features_triplet.pkl', 'rb') as rb:
+        kdd_data_triplet = pickle.load(rb)
 
 
     cnt = 0
     min_x = None
     max_x = None
     for unass_author_id, unass_paper_id, the_author_name, author_rank in tqdm(positive_example):
-        # x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][unass_author_id], unass_paper_id, 
-        #                            train_pub, author_rank,  nltk_title, nltk_abstract, gensim_title, gensum_abstract,
-        #                            p2p_result, kdd_data, kdd_data_triplet)
         x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][unass_author_id], unass_paper_id, 
                                    train_pub, author_rank,  nltk_title, nltk_abstract, gensim_title, gensum_abstract,
-                                   p2p_result)
+                                   p2p_result, kdd_data, kdd_data_triplet)
         train_x.append(x)
         train_y.append(1)
 
@@ -342,18 +342,14 @@ if __name__ == "__main__":
     for one_data in negative_example:
         sub_data.append(one_data)
         if len(sub_data) >= step:
-            # jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
-            #                     train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
             jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
-                                train_pub, author_rank, None, None, id)))
+                                train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
             id += 1
             sub_data = []
 
     if len(sub_data) > 0:
-        # jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
-        #             train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
         jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
-                    train_pub, author_rank, None, None, id)))
+                    train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
         id += 1
         sub_data = {}
     
