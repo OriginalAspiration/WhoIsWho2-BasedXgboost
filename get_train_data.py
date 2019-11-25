@@ -15,6 +15,7 @@ import multiprocessing
 from multiprocessing import Pool
 import numpy as np
 from tqdm import tqdm
+import math
 
 from train_model import cosVector
 
@@ -173,10 +174,18 @@ def get_kdd_vector(paper_id, author_rank, kdd_data, vector_dims):
         if temp_vector_list:
             vector = np.sum(temp_vector_list, axis=0)/len(temp_vector_list)
         else:
+            #return None
+            print('Canot find it!')
+            print('paper_id, author_rank', paper_id, author_rank)
+            print('vector_dims', vector_dims)
+            print('')
+            
             vector = np.zeros(vector_dims)
-    return vector
+    return vector + 1e-8
 
 def add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank_1, kdd_data, kdd_dims):
+    #global sum_t_100, sum_t_64, count
+
     # get author_rank_2
     the_author_name = replace_str(paper_info_1['authors'][author_rank_1]['name'])
     author_rank_2 = -1
@@ -186,8 +195,26 @@ def add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, 
             break
     vector_1 = get_kdd_vector(paper_id_1, author_rank_1, kdd_data, kdd_dims)
     vector_2 = get_kdd_vector(paper_id_2, author_rank_2, kdd_data, kdd_dims)
-    # result.append(cosVector(vector_1, vector_2))
-    result.append(np.sum((vector_1 - vector_2) ** 2)) # euclidean
+    
+    '''if vector_1 is None or vector_2 is None:
+        t = 0.0
+    else:
+        t = cosVector(vector_1, vector_2)'''
+
+    t = np.sum((vector_1 - vector_2) ** 2)
+    result.append(t)
+
+    '''if kdd_dims == 100:
+        sum_t_100 += t
+    else:
+        sum_t_64 += t
+    count += 1'''
+
+    if math.isnan(float(t)):
+        print('vector_1', vector_1)
+        print('vector_2', vector_2)
+
+        assert False
 
 
 def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank,
@@ -267,7 +294,7 @@ def load_p2p_result():
     return p2p_result
 
 def f(negative_example, existing_data_hash_by_name, unass_paper_id, train_pub, 
-      author_rank, kdd_data=None, kdd_data_triplet=None, pool_id=0):
+        author_rank, kdd_data, kdd_data_triplet, pool_id):
     print('pool_id', pool_id, 'begin')
     results = []
 
@@ -309,17 +336,53 @@ if __name__ == "__main__":
     with open('data/kdd_embedding/pid_order_to_features_triplet.pkl', 'rb') as rb:
         kdd_data_triplet = pickle.load(rb)
 
+    '''max_t =0
+    min_t =0
+     
+    for x in kdd_data_triplet:
+        y = kdd_data_triplet[x]
+        t = float(np.sum(y))
+        
+        if math.isnan(t) or t == 0:
+            print('++', 'y', y, 'x', x)
+        max_t = max(t, max_t)
+        min_t = min(t, max_t)
+    print('max_t', max_t)
+    print('min_t', min_t)
+    for x in kdd_data:
+        y = kdd_data[x]
+        t = float(np.sum(y))
+
+        if math.isnan(t) or t == 0:
+            print('y', y, 'x', x)
+        
+        max_t = max(t, max_t)
+        min_t = min(t, max_t)
+    print('max_t', max_t)
+    print('min_t', min_t)
+    
+    assert False'''
+
 
     cnt = 0
     min_x = None
     max_x = None
+    '''sum_t_100 = 0
+    sum_t_64 = 0
+    count = 0'''
+    
     for unass_author_id, unass_paper_id, the_author_name, author_rank in tqdm(positive_example):
         x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][unass_author_id], unass_paper_id, 
                                    train_pub, author_rank,  nltk_title, nltk_abstract, gensim_title, gensum_abstract,
                                    p2p_result, kdd_data, kdd_data_triplet)
         train_x.append(x)
         train_y.append(1)
+        
+        '''if count % 10000 == 0:
+            print('sum_t_100, sum_t_64, count, sum_t_100/count, sum_t_64/count',
+            sum_t_100, sum_t_64, count, sum_t_100/count, sum_t_64/count)'''
 
+        
         if min_x is None:
             min_x = x
             max_x = x
@@ -328,8 +391,12 @@ if __name__ == "__main__":
     
     print('min_x', min_x)
     print('max_x', max_x)
-    #assert False
-    #assert False
+    
+    #assert False 6031508
+    
+    '''sum_t_100 = 0
+    sum_t_64 = 0
+    count = 0'''
     
     num_pool = 4
     len_data = len(negative_example)
@@ -361,6 +428,9 @@ if __name__ == "__main__":
         for x in sub_results:
             train_x.append(x)
             train_y.append(0)
+    
+    '''print('sum_t_100, sum_t_64, count, sum_t_100/count, sum_t_64/count',
+        sum_t_100, sum_t_64, count, sum_t_100/count, sum_t_64/count)'''
 
     with open('data/track2/train/train_x.pkl', 'wb') as wb:
         pickle.dump(np.array(train_x), wb)

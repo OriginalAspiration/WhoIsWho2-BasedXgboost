@@ -1,3 +1,6 @@
+import sys
+sys.path.append("/home/rqy/.local/lib/python3.5/site-packages")
+
 import time
 import json
 import pickle
@@ -71,8 +74,7 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, kdd_data=None,
     print('pool_id', pool_id, 'begin')
     result_dict = {}
     error_times = 0
-    # bst = xgb.Booster(model_file=model_name)
-    if pool_id == 3:
+    if pool_id == 0:
         x = tqdm(cna_valid_unass_competition)
     else:
         x = cna_valid_unass_competition
@@ -105,10 +107,10 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, kdd_data=None,
     return result_dict
 
 if __name__ == "__main__":
-    UPDATE_KDD_BY_SELF = False
+    UPDATE_KDD_BY_SELF = True
     INIT_TEST_ALTER_PUB = False
-    INIT_P2P_XGB = True
-    TRAIN_MODEL = True
+    INIT_P2P_XGB = False
+    TRAIN_MODEL = False
 
     model_name = 'xgb_1.model'
     model_call_func = get_model_func(model_name, 'xgb')
@@ -123,15 +125,15 @@ if __name__ == "__main__":
         whole_author_profile_pub = json.load(r)
     with open('data/track2/cna_data/whole_author_profile.json', 'r') as r:
         whole_author_profile = json.load(r)
-    # #kdd data
+    #kdd data
     if UPDATE_KDD_BY_SELF:
-        with open('data/kdd_embedding/pid_order_to_features_whole.pkl', 'rb') as rb:
+        with open('data/kdd_embedding/whole_pid_order_to_features.pkl', 'rb') as rb:
             kdd_data = pickle.load(rb)
-        with open('data/kdd_embedding/pid_order_to_features_triplet_whole.pkl', 'rb') as rb:
+        with open('data/kdd_embedding/whole_pid_order_to_features_triplet.pkl', 'rb') as rb:
             kdd_data_triplet = pickle.load(rb)
-        with open('data/kdd_embedding/cna_pid_order_to_features.pkl', 'rb') as rb:
+        with open('data/kdd_embedding/cna_pid_order_to_features_use_whole.pkl', 'rb') as rb:
             kdd_data_cna = pickle.load(rb)
-        with open('data/kdd_embedding/cna_pid_order_to_features_triplet.pkl', 'rb') as rb:
+        with open('data/kdd_embedding/cna_pid_order_to_features_triplet_use_train.pkl', 'rb') as rb:
             kdd_data_triplet_cna = pickle.load(rb)
         kdd_data.update(kdd_data_cna)
         kdd_data_triplet.update(kdd_data_triplet_cna)

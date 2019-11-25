@@ -45,8 +45,7 @@ def load_gensim_result():
         gensum_abstract = pickle.load(r3)
     return gensim_title, gensum_abstract
 
-def f1(negative_example, existing_data_hash_by_name, nltk_title, nltk_abstract, gensim_title, gensum_abstract,
-        model_name, train_pub, pool_id, is_negative):
+def f1(negative_example, existing_data_hash_by_name, nltk_title, nltk_abstract, gensim_title, gensum_abstract, model_name,          train_pub, pool_id, is_negative):
     print('pool_id', pool_id, 'begin')
     
     result = {}
