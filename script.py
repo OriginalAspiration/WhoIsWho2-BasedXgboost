@@ -19,6 +19,13 @@ from sklearn.datasets import make_friedman1
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.externals import joblib
 import paper2paper_xgb 
+import torch
+import torch.nn as nn
+import torch.utils.data as Data
+import torch.nn.functional as F
+
+from train_nn import Net
+
 
 def load_nltk_result():
     with open('data/track2/test/test_pub_nltk_result_title.res', 'rb') as r1:
@@ -40,13 +47,31 @@ def load_p2p_result():
         p2p_result = pickle.load(r1)
     return p2p_result
 
+def get_model_func(model_name, model_type='xgb'):
+    def xgb_model_func(array_x):
+        bst = xgb.Booster(model_file=model_name)
+        dtest=xgb.DMatrix(array_x)
+        return bst.predict(dtest)
 
-def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, model_name, model2_name, kdd_data=None, kdd_data_triplet=None, pool_id=0):
+    def pytorch_model_func(array_x):
+        tensor_x = torch.tensor(array_x, dtype=torch.float32)
+        return net(tensor_x).squeeze().detach().numpy()
+
+    if model_type == 'xgb':
+        return xgb_model_func
+    elif model_type == 'pytorch':
+        net = torch.load(model_name)
+        return pytorch_model_func
+    else:
+        assert False, '--- Unknown model'
+
+
+def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, kdd_data=None, kdd_data_triplet=None, pool_id=0):
+    global model_call_func
     print('pool_id', pool_id, 'begin')
     result_dict = {}
     error_times = 0
-    bst = xgb.Booster(model_file=model_name)
-    est = joblib.load(model2_name)
+    # bst = xgb.Booster(model_file=model_name)
     if pool_id == 3:
         x = tqdm(cna_valid_unass_competition)
     else:
@@ -64,12 +89,10 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, model_name, mo
                 x = compare_paper_with_set(whole_data_hash_by_name[replace_str(the_author_name)][same_name_author_id], 
                                         unass_paper_id, test_alter_pub, author_rank, nltk_title, nltk_abstract, gensim_title,
                                         gensum_abstract, p2p_result, kdd_data, kdd_data_triplet)
-                cna_x.append( x )
+                cna_x.append(x)
                 id_list.append(same_name_author_id)
 
-            dtest=xgb.DMatrix(np.array(cna_x))
-            #ypred = bst.predict(dtest) + est.predict(np.array(cna_x))
-            ypred =  bst.predict(dtest)
+            ypred = model_call_func(np.array(cna_x))
             predicted_author_id = id_list[np.argsort(ypred)[-1].item()]
             if predicted_author_id not in result_dict:
                 result_dict[predicted_author_id] = []
@@ -88,7 +111,10 @@ if __name__ == "__main__":
     TRAIN_MODEL = True
 
     model_name = 'xgb_1.model'
-    model2_name = 'gdbt_1.model'
+    model_call_func = get_model_func(model_name, 'xgb')
+    # model_name = 'nn_1.model'
+    # model_call_func = get_model_func(model_name, 'pytorch')
+
     with open('data/track2/cna_data/cna_valid_unass_competition.json', 'r') as r:
         cna_valid_unass_competition = json.load(r)
     with open('data/track2/cna_data/cna_valid_pub.json', 'r') as r:
@@ -150,6 +176,7 @@ if __name__ == "__main__":
             #print('old_name', old_name)
             pass
     if INIT_TEST_ALTER_PUB:
+        print('----- INIT_TEST_ALTER_PUB START -----')
         # format_process.save_format_data(test_pub, file_name_alter_pub)
         test_alter_pub = multi_process_format_data(test_pub)
         with open(file_name_alter_pub, 'w', encoding='utf-8') as w:
@@ -161,7 +188,8 @@ if __name__ == "__main__":
     #assert False
 
     #train_model
-    if TRAIN_MODEL:            
+    if TRAIN_MODEL:        
+        print('----- TRAIN_MODEL START -----')
         if True:
             data_model_dir = 'data/track2/test/test_pub_nltk_' + 'model_'
             data_result_dir = 'data/track2/test/test_pub_nltk_' + 'result_'
@@ -179,6 +207,7 @@ if __name__ == "__main__":
     gensim_title, gensum_abstract = load_gensim_result()
 
     if INIT_P2P_XGB:
+        print('----- INIT_P2P_XGB START -----')
         #p2p_result(train_pub, model_namem, data_result_dir, existing_data_hash_by_name,  positive_example, negative_example, nltk_title, nltk_abstract, gensim_title, gensum_abstract):
         data_result_dir = 'data/track2/test/test_pub_p2p_result_title.res'
         paper2paper_xgb.p2p_result(test_pub, 'paper2paper_xgb_1.model', data_result_dir, whole_data_hash_by_name, None, negative_example, nltk_title, nltk_abstract, gensim_title, gensum_abstract)
@@ -191,6 +220,7 @@ if __name__ == "__main__":
     num_pool = 8
     len_data = len(cna_valid_unass_competition)
     print("Length of data", len_data)
+    print('----- mutiprocess run f START -----')
     pool = Pool()#train_pub
     step = len_data//num_pool
     id = 0
@@ -199,12 +229,12 @@ if __name__ == "__main__":
     for one_data in cna_valid_unass_competition:
         sub_data.append(one_data)
         if len(sub_data) >= step:
-            jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, model_name,model2_name, kdd_data, kdd_data_triplet, id)))
+            jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, kdd_data, kdd_data_triplet, id)))
             id += 1
             sub_data = []
 
     if len(sub_data) > 0:
-        jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, model_name,model2_name, kdd_data, kdd_data_triplet, id)))
+        jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, kdd_data, kdd_data_triplet, id)))
         id += 1
         sub_data = {}
     
