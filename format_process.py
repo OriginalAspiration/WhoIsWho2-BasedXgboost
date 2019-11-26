@@ -139,5 +139,5 @@ if __name__ == '__main__':
 
     new_pub = multi_process_format_data(train_pub)
 
-    with open(save_path, 'w', encoding='utf-8') as w:
-        w.write(json.dumps(results))
+    with open('data/track2/train/train_pub_alter.json', 'w', encoding='utf-8') as w:
+        w.write(json.dumps(new_pub))

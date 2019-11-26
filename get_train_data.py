@@ -316,8 +316,8 @@ if __name__ == "__main__":
     nltk_title, nltk_abstract = load_nltk_result()
     #gensim_title, gensum_abstract = None, None
     gensim_title, gensum_abstract = load_gensim_result()
-    # p2p_result = load_p2p_result()
-    p2p_result = None
+    p2p_result = load_p2p_result()
+    # p2p_result = None
     #for x in p2p_result:
     #    if x[0] == 'AriXov6L':
     #        print(x, p2p_result[x])
