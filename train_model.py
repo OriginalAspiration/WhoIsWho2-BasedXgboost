@@ -209,7 +209,7 @@ def nltk_tf(pub, data_model_dir, data_result_dir,
     result_abstract = {}
 
     if positive_example is not None:
-        num_pool = 8
+        num_pool = 4
         len_data = len(positive_example)
         print("Length of data", len_data)
         pool = Pool()
@@ -245,7 +245,7 @@ def nltk_tf(pub, data_model_dir, data_result_dir,
         print('mean ans1', np.mean(list_ans1))
         print('mean ans2', np.mean(list_ans2))
     
-    num_pool = 8
+    num_pool = 4
     len_data = len(negative_example)
     print("Length of data", len_data)
     pool = Pool()
@@ -559,7 +559,7 @@ def train_gensim_model(pub_original, file_name_out,
 
     data_model_dir = file_name_out + 'model_'
     # 训练模型
-    if False:
+    if True:
         gensim_train(pub_original, data_model_dir)
 
     # 预处理出结果,get_train_data阶段可以直接用

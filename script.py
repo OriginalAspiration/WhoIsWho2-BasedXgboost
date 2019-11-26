@@ -108,9 +108,9 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, kdd_data=None,
 
 if __name__ == "__main__":
     UPDATE_KDD_BY_SELF = True
-    INIT_TEST_ALTER_PUB = False
-    INIT_P2P_XGB = False
-    TRAIN_MODEL = False
+    INIT_TEST_ALTER_PUB = True
+    INIT_P2P_XGB = True
+    TRAIN_MODEL = True
 
     model_name = 'xgb_1.model'
     model_call_func = get_model_func(model_name, 'xgb')
@@ -133,7 +133,7 @@ if __name__ == "__main__":
             kdd_data_triplet = pickle.load(rb)
         with open('data/kdd_embedding/cna_pid_order_to_features_use_whole.pkl', 'rb') as rb:
             kdd_data_cna = pickle.load(rb)
-        with open('data/kdd_embedding/cna_pid_order_to_features_triplet_use_train.pkl', 'rb') as rb:
+        with open('data/kdd_embedding/cna_pid_order_to_features_triplet_use_whole.pkl', 'rb') as rb:
             kdd_data_triplet_cna = pickle.load(rb)
         kdd_data.update(kdd_data_cna)
         kdd_data_triplet.update(kdd_data_triplet_cna)
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     #gensim_title, gensum_abstract = None, None
 
     #cna_valid_unass_competition = cna_valid_unass_competition[:20]
-    num_pool = 8
+    num_pool = 4
     len_data = len(cna_valid_unass_competition)
     print("Length of data", len_data)
     print('----- mutiprocess run f START -----')

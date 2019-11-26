@@ -176,6 +176,7 @@ def p2p_result(train_pub, model_name, data_result_dir, existing_data_hash_by_nam
 # def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract):
 
 if __name__ == "__main__":
+    RETRAIN_P2P_XGB_MODEL = True
     random.seed(0)
     with open('data/track2/train/train_pub_alter.json', 'r') as r:
         train_pub = json.load(r)
@@ -188,7 +189,7 @@ if __name__ == "__main__":
     model_name = 'paper2paper_xgb_1.model'
 
 
-    if True:
+    if RETRAIN_P2P_XGB_MODEL:
         positive_papers = {}
         negative_papers = {}
         id_author_rank = {}

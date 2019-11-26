@@ -331,9 +331,9 @@ if __name__ == "__main__":
     with open('data/track2/train/training_data.pkl', 'rb') as file:
         existing_data_hash_by_name,positive_example,negative_example = pickle.load(file)
 
-    with open('data/kdd_embedding/pid_order_to_features.pkl', 'rb') as rb:
+    with open('data/kdd_embedding/train_pid_order_to_features.pkl', 'rb') as rb:
         kdd_data = pickle.load(rb)
-    with open('data/kdd_embedding/pid_order_to_features_triplet.pkl', 'rb') as rb:
+    with open('data/kdd_embedding/train_pid_order_to_features_triplet.pkl', 'rb') as rb:
         kdd_data_triplet = pickle.load(rb)
 
     '''max_t =0
