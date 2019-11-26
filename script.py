@@ -218,8 +218,8 @@ if __name__ == "__main__":
         data_result_dir = 'data/track2/test/test_pub_p2p_result_title.res'
         paper2paper_xgb.p2p_result(test_pub, 'paper2paper_xgb_1.model', data_result_dir, whole_data_hash_by_name, None, negative_example, nltk_title, nltk_abstract, gensim_title, gensum_abstract)
     
-    # p2p_result = load_p2p_result()
-    p2p_result = None
+    p2p_result = load_p2p_result()
+    #p2p_result = None
     #gensim_title, gensum_abstract = None, None
 
     #cna_valid_unass_competition = cna_valid_unass_competition[:20]
