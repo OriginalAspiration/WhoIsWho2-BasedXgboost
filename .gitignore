@@ -1,7 +1,7 @@
-.model
-.pkl
+*.model
+*.pkl
 xxxx.py
-.json
+*.json
 data/
 .DS_Store
 .vscode/
