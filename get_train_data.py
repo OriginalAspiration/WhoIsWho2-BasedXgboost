@@ -15,9 +15,11 @@ import multiprocessing
 from multiprocessing import Pool
 import numpy as np
 from tqdm import tqdm
+import math
 import re
 import nltk.stem.porter as pt
 from nltk.corpus import stopwords
+from train_model import cosVector
 
 def fix_name(s):
     s = s.lower().strip()
