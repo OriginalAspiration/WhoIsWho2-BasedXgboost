@@ -70,7 +70,8 @@ def get_model_func(model_name, model_type='xgb'):
 
 
 def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, kdd_data=None, kdd_data_triplet=None, pool_id=0):
-    global model_call_func
+    global model_call_func_1
+    global model_call_func_2
     print('pool_id', pool_id, 'begin')
     result_dict = {}
     error_times = 0
@@ -94,7 +95,9 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, kdd_data=None,
                 cna_x.append(x)
                 id_list.append(same_name_author_id)
 
-            ypred = model_call_func(np.array(cna_x))
+            ypred_1 = model_call_func_1(np.array(cna_x))
+            ypred_2 = model_call_func_2(np.array(cna_x))
+            ypred = ypred_1 + ypred_2
             predicted_author_id = id_list[np.argsort(ypred)[-1].item()]
             if predicted_author_id not in result_dict:
                 result_dict[predicted_author_id] = []
@@ -112,10 +115,8 @@ if __name__ == "__main__":
     INIT_P2P_XGB = True
     TRAIN_MODEL = True
 
-    model_name = 'xgb_1.model'
-    model_call_func = get_model_func(model_name, 'xgb')
-    # model_name = 'nn_1.model'
-    # model_call_func = get_model_func(model_name, 'pytorch')
+    model_call_func_1 = get_model_func('xgb_1.model', 'xgb')
+    model_call_func_2 = get_model_func('nn_1.model', 'pytorch')
 
     with open('data/track2/cna_data/cna_valid_unass_competition.json', 'r') as r:
         cna_valid_unass_competition = json.load(r)
@@ -218,8 +219,8 @@ if __name__ == "__main__":
         data_result_dir = 'data/track2/test/test_pub_p2p_result_title.res'
         paper2paper_xgb.p2p_result(test_pub, 'paper2paper_xgb_1.model', data_result_dir, whole_data_hash_by_name, None, negative_example, nltk_title, nltk_abstract, gensim_title, gensum_abstract)
     
-    # p2p_result = load_p2p_result()
-    p2p_result = None
+    p2p_result = load_p2p_result()
+    # p2p_result = None
     #gensim_title, gensum_abstract = None, None
 
     #cna_valid_unass_competition = cna_valid_unass_competition[:20]

@@ -16,6 +16,7 @@ python get_train_data.py
 echo "---------- train_xgb.py ----------"
 date
 python train_xgb.py
+python train_nn.py
 echo "---------- script.py ----------"
 date
 python script.py

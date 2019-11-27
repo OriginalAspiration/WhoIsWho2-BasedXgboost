@@ -392,42 +392,43 @@ if __name__ == "__main__":
     print('min_x', min_x)
     print('max_x', max_x)
     
-    #assert False 6031508
+    for unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id in negative_example:
+        x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][other_name_author_id], unass_paper_id, 
+                                train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
+                                kdd_data, kdd_data_triplet)
+        train_x.append(x)
+        train_y.append(0)
     
-    '''sum_t_100 = 0
-    sum_t_64 = 0
-    count = 0'''
-    
-    num_pool = 4
-    len_data = len(negative_example)
-    print("Length of data", len_data)
-    pool = Pool()#train_pub
-    step = len_data//num_pool
-    id = 0
-    sub_data = []
-    jobs = []
-    for one_data in negative_example:
-        sub_data.append(one_data)
-        if len(sub_data) >= step:
-            jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
-                                train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
-            id += 1
-            sub_data = []
+    # num_pool = 4
+    # len_data = len(negative_example)
+    # print("Length of data", len_data)
+    # pool = Pool()#train_pub
+    # step = len_data//num_pool
+    # id = 0
+    # sub_data = []
+    # jobs = []
+    # for one_data in negative_example:
+    #     sub_data.append(one_data)
+    #     if len(sub_data) >= step:
+    #         jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
+    #                             train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
+    #         id += 1
+    #         sub_data = []
 
-    if len(sub_data) > 0:
-        jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
-                    train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
-        id += 1
-        sub_data = {}
+    # if len(sub_data) > 0:
+    #     jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
+    #                 train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
+    #     id += 1
+    #     sub_data = {}
     
-    pool.close()
-    pool.join()
+    # pool.close()
+    # pool.join()
 
-    for j in jobs:
-        sub_results = j.get()
-        for x in sub_results:
-            train_x.append(x)
-            train_y.append(0)
+    # for j in jobs:
+    #     sub_results = j.get()
+    #     for x in sub_results:
+    #         train_x.append(x)
+    #         train_y.append(0)
     
     '''print('sum_t_100, sum_t_64, count, sum_t_100/count, sum_t_64/count',
         sum_t_100, sum_t_64, count, sum_t_100/count, sum_t_64/count)'''
