@@ -562,8 +562,9 @@ if __name__ == "__main__":
 
     with open('data/track2/train/keywords_map.pkl', 'rb') as rb:
         k2k_edges = pickle.load(rb)
-    with open('data/track2/train/name_map.pkl', 'rb') as rb:
-        n2n_edges = pickle.load(rb)
+    # with open('data/track2/train/name_map.pkl', 'rb') as rb:
+    #     n2n_edges = pickle.load(rb)
+    n2n_edges = None
 
     '''max_t =0
     min_t =0

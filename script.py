@@ -161,8 +161,9 @@ if __name__ == "__main__":
     # keyword two hop data
     with open('data/track2/train/keywords_map.pkl', 'rb') as rb:
         k2k_edges = pickle.load(rb)
-    with open('data/track2/train/name_map.pkl', 'rb') as rb:
-        n2n_edges = pickle.load(rb)
+    # with open('data/track2/train/name_map.pkl', 'rb') as rb:
+    #     n2n_edges = pickle.load(rb)
+    n2n_edges = None
     print('--- script.py load data finish ---')
 
     whole_data_hash_by_name = {}

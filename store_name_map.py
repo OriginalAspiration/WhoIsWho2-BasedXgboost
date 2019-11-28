@@ -46,7 +46,7 @@ if __name__ == "__main__":
     print('name_num', name_num)
     stop_name = []
     for name in n2n_edge_times:
-        if len(n2n_edge_times[name].keys()) > 50:
+        if len(n2n_edge_times[name].keys()) > 100:
             stop_name.append(name)
     stop_name_num = len(stop_name)
     print('stop_name_num', stop_name_num)
