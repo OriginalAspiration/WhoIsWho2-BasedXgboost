@@ -110,10 +110,10 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, kdd_data=None,
     return result_dict
 
 if __name__ == "__main__":
-    UPDATE_KDD_BY_SELF = True
-    INIT_TEST_ALTER_PUB = True
-    INIT_P2P_XGB = True
-    TRAIN_MODEL = True
+    UPDATE_KDD_BY_SELF = False
+    INIT_TEST_ALTER_PUB = False
+    INIT_P2P_XGB = False
+    TRAIN_MODEL = False
 
     model_name = 'xgb_1.model'
     model_call_func = get_model_func(model_name, 'xgb')
@@ -149,6 +149,8 @@ if __name__ == "__main__":
             kdd_data = pickle.load(rb)
         with open('data/kdd_embedding/kdd_data_triplet_script.pkl', 'rb') as rb:
             kdd_data_triplet = pickle.load(rb)
+        #kdd_data = None
+        #kdd_data_triplet = None
     print('--- script.py load data finish ---')
 
     whole_data_hash_by_name = {}

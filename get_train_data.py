@@ -388,8 +388,9 @@ def add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, 
     vector_2 = get_kdd_vector(paper_id_2, author_rank_2, kdd_data, kdd_dims)
 
     t = np.sum((vector_1 - vector_2) ** 2)
-    if kdd_dims == 100:
-        t /= 10
+    
+    t = min(t, 10.0) / 10.0
+
     result.append(t)
 
     if math.isnan(float(t)):
@@ -475,8 +476,7 @@ def load_p2p_result():
         p2p_result = pickle.load(r1)
     return p2p_result
 
-def f(negative_example, existing_data_hash_by_name, unass_paper_id, train_pub, 
-        author_rank, kdd_data, kdd_data_triplet, pool_id):
+def f(negative_example, existing_data_hash_by_name, train_pub, kdd_data, kdd_data_triplet, pool_id, is_negative):
     print('pool_id', pool_id, 'begin')
     results = []
 
@@ -484,15 +484,24 @@ def f(negative_example, existing_data_hash_by_name, unass_paper_id, train_pub,
         x_negative_example = tqdm(negative_example)
     else:
         x_negative_example = negative_example
-    for unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id in x_negative_example:
-        x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][other_name_author_id], unass_paper_id, 
-                                train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
-                                kdd_data, kdd_data_triplet)
-        results.append(x)
+    
+    if is_negative:
+        for unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id in x_negative_example:
+            x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][other_name_author_id], unass_paper_id, 
+                                    train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
+                                    kdd_data, kdd_data_triplet)
+            results.append(x)
+    else:
+        for unass_author_id, unass_paper_id, the_author_name, author_rank in x_negative_example:
+            x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][unass_author_id], unass_paper_id, 
+                                    train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
+                                    kdd_data, kdd_data_triplet)
+            results.append(x)
 
     return results
 
 if __name__ == "__main__":
+    np.set_printoptions(suppress=True)
     with open('data/track2/train/train_pub_alter.json', 'r') as r:
         train_pub = json.load(r)
     nltk_title, nltk_abstract = load_nltk_result()
@@ -517,6 +526,8 @@ if __name__ == "__main__":
         kdd_data = pickle.load(rb)
     with open('data/kdd_embedding/train_pid_order_to_features_triplet.pkl', 'rb') as rb:
         kdd_data_triplet = pickle.load(rb)
+    #kdd_data = None
+    #kdd_data_triplet = None
 
     '''max_t =0
     min_t =0
@@ -549,30 +560,52 @@ if __name__ == "__main__":
     cnt = 0
     min_x = None
     max_x = None
+    mean_x = []
     '''sum_t_100 = 0
     sum_t_64 = 0
     count = 0'''
-    
-    for unass_author_id, unass_paper_id, the_author_name, author_rank in tqdm(positive_example):
-        x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][unass_author_id], unass_paper_id, 
-                                   train_pub, author_rank,  nltk_title, nltk_abstract, gensim_title, gensum_abstract,
-                                   p2p_result, kdd_data, kdd_data_triplet)
-        train_x.append(x)
-        train_y.append(1)
-        
-        '''if count % 10000 == 0:
-            print('sum_t_100, sum_t_64, count, sum_t_100/count, sum_t_64/count',
-            sum_t_100, sum_t_64, count, sum_t_100/count, sum_t_64/count)'''
 
-        
-        if min_x is None:
-            min_x = x
-            max_x = x
-        min_x = np.min( [x, min_x], axis=0 )
-        max_x = np.max( [x, max_x], axis=0 )
+    num_pool = 4
+    len_data = len(positive_example)
+    print("Length of data", len_data)
+    pool = Pool()#train_pub
+    step = len_data//num_pool
+    id = 0
+    sub_data = []
+    jobs = []
+    for one_data in positive_example:
+        sub_data.append(one_data)
+        if len(sub_data) >= step:
+            jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
+                                train_pub, kdd_data, kdd_data_triplet, id, False)))
+            id += 1
+            sub_data = []
+
+    if len(sub_data) > 0:
+        jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
+                                    train_pub, kdd_data, kdd_data_triplet, id, False)))
+        id += 1
+        sub_data = {}
+    
+    pool.close()
+    pool.join()
+
+    for j in jobs:
+        sub_results = j.get()
+        for x in sub_results:
+            train_x.append(x)
+            train_y.append(1)
+
+            if min_x is None:
+                min_x = x
+                max_x = x
+            min_x = np.min( [x, min_x], axis=0 )
+            max_x = np.max( [x, max_x], axis=0 )
+            mean_x.append(x)
     
     print('min_x', min_x)
     print('max_x', max_x)
+    print('mean_x', np.mean(mean_x, axis=0))
     
     #assert False 6031508
     
@@ -580,6 +613,10 @@ if __name__ == "__main__":
     sum_t_64 = 0
     count = 0'''
     
+    min_x = None
+    max_x = None
+    mean_x = []
+
     num_pool = 4
     len_data = len(negative_example)
     print("Length of data", len_data)
@@ -591,14 +628,14 @@ if __name__ == "__main__":
     for one_data in negative_example:
         sub_data.append(one_data)
         if len(sub_data) >= step:
-            jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
-                                train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
+            jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
+                                        train_pub, kdd_data, kdd_data_triplet, id, True)))
             id += 1
             sub_data = []
 
     if len(sub_data) > 0:
-        jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, unass_paper_id, 
-                    train_pub, author_rank, kdd_data, kdd_data_triplet, id)))
+        jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
+                                        train_pub, kdd_data, kdd_data_triplet, id, True)))
         id += 1
         sub_data = {}
     
@@ -610,6 +647,16 @@ if __name__ == "__main__":
         for x in sub_results:
             train_x.append(x)
             train_y.append(0)
+            if min_x is None:
+                min_x = x
+                max_x = x
+            min_x = np.min( [x, min_x], axis=0 )
+            max_x = np.max( [x, max_x], axis=0 )
+            mean_x.append(x)
+    
+    print('min_x', min_x)
+    print('max_x', max_x)
+    print('mean_x', np.mean(mean_x, axis=0))
     
     '''print('sum_t_100, sum_t_64, count, sum_t_100/count, sum_t_64/count',
         sum_t_100, sum_t_64, count, sum_t_100/count, sum_t_64/count)'''
