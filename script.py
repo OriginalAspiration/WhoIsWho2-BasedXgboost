@@ -27,7 +27,8 @@ import torch.nn as nn
 import torch.utils.data as Data
 import torch.nn.functional as F
 
-from train_nn import Net
+from train_nn1 import Net1
+from train_nn2 import Net2
 
 
 def load_nltk_result():
@@ -69,9 +70,10 @@ def get_model_func(model_name, model_type='xgb'):
         assert False, '--- Unknown model'
 
 
-def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, kdd_data=None, kdd_data_triplet=None, pool_id=0):
+def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, kdd_data=None, kdd_data_triplet=None, k2k_edges=None, n2n_edges=None, pool_id=0):
     global model_call_func_1
     global model_call_func_2
+    # global model_call_func_3
     print('pool_id', pool_id, 'begin')
     result_dict = {}
     error_times = 0
@@ -91,12 +93,15 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, kdd_data=None,
             for same_name_author_id in whole_data_hash_by_name[replace_str(the_author_name)]:
                 x = compare_paper_with_set(whole_data_hash_by_name[replace_str(the_author_name)][same_name_author_id], 
                                         unass_paper_id, test_alter_pub, author_rank, nltk_title, nltk_abstract, gensim_title,
-                                        gensum_abstract, p2p_result, kdd_data, kdd_data_triplet)
+                                        gensum_abstract, p2p_result, kdd_data, kdd_data_triplet, k2k_edges, n2n_edges)
                 cna_x.append(x)
                 id_list.append(same_name_author_id)
 
             ypred_1 = model_call_func_1(np.array(cna_x))
+            # ypred_1 = ypred_1 / np.max(ypred_1)
             ypred_2 = model_call_func_2(np.array(cna_x))
+            # ypred_2 = ypred_2 / np.max(ypred_2)
+            # ypred_3 = model_call_func_3(np.array(cna_x))[:, :1]
             ypred = ypred_1 + ypred_2
             predicted_author_id = id_list[np.argsort(ypred)[-1].item()]
             if predicted_author_id not in result_dict:
@@ -117,6 +122,7 @@ if __name__ == "__main__":
 
     model_call_func_1 = get_model_func('xgb_1.model', 'xgb')
     model_call_func_2 = get_model_func('nn_1.model', 'pytorch')
+    # model_call_func_3 = get_model_func('nn_2.model', 'pytorch')
 
     with open('data/track2/cna_data/cna_valid_unass_competition.json', 'r') as r:
         cna_valid_unass_competition = json.load(r)
@@ -147,6 +153,11 @@ if __name__ == "__main__":
             kdd_data = pickle.load(rb)
         with open('data/kdd_embedding/kdd_data_triplet_script.pkl', 'rb') as rb:
             kdd_data_triplet = pickle.load(rb)
+    # keyword two hop data
+    with open('data/track2/train/keywords_map.pkl', 'rb') as rb:
+        k2k_edges = pickle.load(rb)
+    with open('data/track2/train/name_map.pkl', 'rb') as rb:
+        n2n_edges = pickle.load(rb)
     print('--- script.py load data finish ---')
 
     whole_data_hash_by_name = {}
@@ -236,12 +247,12 @@ if __name__ == "__main__":
     for one_data in cna_valid_unass_competition:
         sub_data.append(one_data)
         if len(sub_data) >= step:
-            jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, kdd_data, kdd_data_triplet, id)))
+            jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, kdd_data, kdd_data_triplet, k2k_edges, n2n_edges, id)))
             id += 1
             sub_data = []
 
     if len(sub_data) > 0:
-        jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, kdd_data, kdd_data_triplet, id)))
+        jobs.append(pool.apply_async(f, args=(sub_data, cna_valid_pub, test_alter_pub, kdd_data, kdd_data_triplet, k2k_edges, n2n_edges, id)))
         id += 1
         sub_data = {}
     

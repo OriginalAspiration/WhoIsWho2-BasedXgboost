@@ -15,10 +15,10 @@ BATCH_SIZE = 50000
 eps = np.finfo(np.float32).eps.item()
 
 
-class Net(nn.Module):
+class Net1(nn.Module):
 
     def __init__(self, input_num):
-        super(Net, self).__init__()
+        super(Net1, self).__init__()
         self.fc1 = nn.Linear(input_num, HIDDEN_NUM)
         self.fc2 = nn.Linear(HIDDEN_NUM, 2 * HIDDEN_NUM)
         self.fc3 = nn.Linear(2 * HIDDEN_NUM, HIDDEN_NUM)
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         num_workers=2,
     )
 
-    net = Net(train_x.shape[-1])
+    net = Net1(train_x.shape[-1])
     optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.2)
     loss_func = torch.nn.BCELoss()

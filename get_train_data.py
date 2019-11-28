@@ -18,6 +18,8 @@ from tqdm import tqdm
 import math
 
 from train_model import cosVector
+from store_keywords_map import process_keyword
+from store_name_map import fix_name
 
 def add_variate_same_author(result, paper_info_1, paper_info_2):
     same_author = 0
@@ -216,10 +218,34 @@ def add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, 
 
         assert False
 
+def add_two_hop_keyword(result, paper_info_1, paper_info_2, k2k_edges):
+    kw_list_1 = [process_keyword(word) for word in paper_info_1['keywords']]
+    kw_list_2 = [process_keyword(word) for word in paper_info_2['keywords']]
+    n = 0
+    for kw1 in kw_list_1:
+        if kw1 not in k2k_edges:
+            continue
+        for kw2 in kw_list_2:
+            if kw2 in k2k_edges[kw1]:
+                n += 1
+    result.append(n / (len(kw_list_1) * len(kw_list_2) + 1e-8))
+
+def add_two_hop_name(result, paper_info_1, paper_info_2, n2n_edges):
+    name_list_1 = [fix_name(author['name']) for author in paper_info_1['authors']]
+    name_list_2 = [fix_name(author['name']) for author in paper_info_2['authors']]
+    n = 0
+    for name_1 in name_list_1:
+        if name_1 not in n2n_edges:
+            continue
+        for name_2 in name_list_2:
+            if name_2 in n2n_edges[name_1]:
+                n += 1
+    result.append(n / (len(name_list_1) * len(name_list_2) + 1e-8))
+
 
 def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank,
                       nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
-                      kdd_data=None, kdd_data_triplet=None):
+                      kdd_data=None, kdd_data_triplet=None, k2k_edges=None, n2n_edges=None):
     result = []
     add_variate_same_author(result, paper_info_1, paper_info_2)  # 3
 
@@ -241,11 +267,16 @@ def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author
         add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank, kdd_data, 100) # 1
     if kdd_data_triplet is not None:
         add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank, kdd_data_triplet, 64) # 1
-    # 20
+    if k2k_edges is not None:
+        add_two_hop_keyword(result, paper_info_1, paper_info_2, k2k_edges) # 1
+    if n2n_edges is not None:
+        add_two_hop_name(result, paper_info_1, paper_info_2, n2n_edges) # 1
+    # 21
     return result
 
 def compare_paper_with_set(id_list, unass_paper_id, train_pub, author_rank, nltk_title, nltk_abstract,
-                           gensim_title, gensum_abstract, p2p_result, kdd_data=None, kdd_data_triplet=None):
+                           gensim_title, gensum_abstract, p2p_result, kdd_data=None, kdd_data_triplet=None,
+                           k2k_edges=None, n2n_edges=None):
     one_person_sim_list = []
     for paper_id in id_list:
         #print('paper_id',paper_id, 'unass_paper_id', unass_paper_id)
@@ -259,7 +290,7 @@ def compare_paper_with_set(id_list, unass_paper_id, train_pub, author_rank, nltk
                                         author_rank,
                                         nltk_title, nltk_abstract,
                                         gensim_title, gensum_abstract, p2p_result,
-                                        kdd_data, kdd_data_triplet))
+                                        kdd_data, kdd_data_triplet, k2k_edges, n2n_edges))
     x = np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list)
     
     x = np.concatenate([x, np.max(one_person_sim_list, axis=0)], 0)
@@ -294,7 +325,7 @@ def load_p2p_result():
     return p2p_result
 
 def f(negative_example, existing_data_hash_by_name, unass_paper_id, train_pub, 
-        author_rank, kdd_data, kdd_data_triplet, pool_id):
+        author_rank, kdd_data, kdd_data_triplet, k2k_edges, n2n_edges, pool_id):
     print('pool_id', pool_id, 'begin')
     results = []
 
@@ -305,7 +336,7 @@ def f(negative_example, existing_data_hash_by_name, unass_paper_id, train_pub,
     for unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id in x_negative_example:
         x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][other_name_author_id], unass_paper_id, 
                                 train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
-                                kdd_data, kdd_data_triplet)
+                                kdd_data, kdd_data_triplet, k2k_edges, n2n_edges)
         results.append(x)
 
     return results
@@ -331,10 +362,15 @@ if __name__ == "__main__":
     with open('data/track2/train/training_data.pkl', 'rb') as file:
         existing_data_hash_by_name,positive_example,negative_example = pickle.load(file)
 
-    with open('data/kdd_embedding/train_pid_order_to_features.pkl', 'rb') as rb:
+    with open('data/kdd_embedding/whole_pid_order_to_features.pkl', 'rb') as rb:
         kdd_data = pickle.load(rb)
-    with open('data/kdd_embedding/train_pid_order_to_features_triplet.pkl', 'rb') as rb:
+    with open('data/kdd_embedding/whole_pid_order_to_features_triplet.pkl', 'rb') as rb:
         kdd_data_triplet = pickle.load(rb)
+
+    with open('data/track2/train/keywords_map.pkl', 'rb') as rb:
+        k2k_edges = pickle.load(rb)
+    with open('data/track2/train/name_map.pkl', 'rb') as rb:
+        n2n_edges = pickle.load(rb)
 
     '''max_t =0
     min_t =0
@@ -374,7 +410,7 @@ if __name__ == "__main__":
     for unass_author_id, unass_paper_id, the_author_name, author_rank in tqdm(positive_example):
         x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][unass_author_id], unass_paper_id, 
                                    train_pub, author_rank,  nltk_title, nltk_abstract, gensim_title, gensum_abstract,
-                                   p2p_result, kdd_data, kdd_data_triplet)
+                                   p2p_result, kdd_data, kdd_data_triplet, k2k_edges, n2n_edges)
         train_x.append(x)
         train_y.append(1)
         
@@ -392,10 +428,10 @@ if __name__ == "__main__":
     print('min_x', min_x)
     print('max_x', max_x)
     
-    for unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id in negative_example:
+    for unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id in tqdm(negative_example):
         x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][other_name_author_id], unass_paper_id, 
                                 train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
-                                kdd_data, kdd_data_triplet)
+                                kdd_data, kdd_data_triplet, k2k_edges, n2n_edges)
         train_x.append(x)
         train_y.append(0)
     
