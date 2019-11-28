@@ -13,7 +13,7 @@ import xgboost as xgb
 from tqdm import tqdm
 from format_process import multi_process_format_data
 import train_model
-from count_name import replace_str
+from count_name import compare_name
 from get_train_data import compare_paper_with_set
 import multiprocessing
 from multiprocessing import Pool
@@ -89,33 +89,37 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, kdd_data=None,
 
         cna_x = []
         id_list = []
-        try:
-            for same_name_author_id in whole_data_hash_by_name[replace_str(the_author_name)]:
-                x = compare_paper_with_set(whole_data_hash_by_name[replace_str(the_author_name)][same_name_author_id], 
-                                        unass_paper_id, test_alter_pub, author_rank, nltk_title, nltk_abstract, gensim_title,
-                                        gensum_abstract, p2p_result, kdd_data, kdd_data_triplet, k2k_edges, n2n_edges)
+        
+        real_author_name_list = []
+        for real_author_name in whole_data_hash_by_name:
+            if compare_name(real_author_name, the_author_name):
+                real_author_name_list.append(real_author_name)
+
+        for author_name in real_author_name_list:
+            for same_name_author_id in whole_data_hash_by_name[author_name]:
+                x = compare_paper_with_set(whole_data_hash_by_name[author_name][same_name_author_id],
+                                        unass_paper_id, test_alter_pub, author_rank,
+                                        nltk_title, nltk_abstract, gensim_title, gensum_abstract,
+                                        p2p_result, kdd_data, kdd_data_triplet, k2k_edges, n2n_edges)
                 cna_x.append(x)
                 id_list.append(same_name_author_id)
 
-            ypred_1 = model_call_func_1(np.array(cna_x))
-            # ypred_1 = ypred_1 / np.max(ypred_1)
-            ypred_2 = model_call_func_2(np.array(cna_x))
-            # ypred_2 = ypred_2 / np.max(ypred_2)
-            # ypred_3 = model_call_func_3(np.array(cna_x))[:, :1]
-            ypred = ypred_1 + ypred_2
-            predicted_author_id = id_list[np.argsort(ypred)[-1].item()]
-            if predicted_author_id not in result_dict:
-                result_dict[predicted_author_id] = []
-            result_dict[predicted_author_id].append(unass_paper_id)
-        except Exception as e:
-            error_times += 1
-            print('error_times: ', error_times)
-            print(e)
+        ypred_1 = model_call_func_1(np.array(cna_x))
+        # ypred_1 = ypred_1 / np.max(ypred_1)
+        ypred_2 = model_call_func_2(np.array(cna_x))
+        # ypred_2 = ypred_2 / np.max(ypred_2)
+        # ypred_3 = model_call_func_3(np.array(cna_x))[:, :1]
+        ypred = ypred_1 + ypred_2
+        predicted_author_id = id_list[np.argsort(ypred)[-1].item()]
+        if predicted_author_id not in result_dict:
+            result_dict[predicted_author_id] = []
+        result_dict[predicted_author_id].append(unass_paper_id)
+
     print("pool",pool_id , "is finish.", "[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish lemma ]")
     return result_dict
 
 if __name__ == "__main__":
-    UPDATE_KDD_BY_SELF = True
+    UPDATE_KDD_BY_SELF = False
     INIT_TEST_ALTER_PUB = True
     INIT_P2P_XGB = True
     TRAIN_MODEL = True
@@ -153,6 +157,7 @@ if __name__ == "__main__":
             kdd_data = pickle.load(rb)
         with open('data/kdd_embedding/kdd_data_triplet_script.pkl', 'rb') as rb:
             kdd_data_triplet = pickle.load(rb)
+
     # keyword two hop data
     with open('data/track2/train/keywords_map.pkl', 'rb') as rb:
         k2k_edges = pickle.load(rb)
@@ -163,10 +168,9 @@ if __name__ == "__main__":
     whole_data_hash_by_name = {}
     for person_id in whole_author_profile:
         real_name = whole_author_profile[person_id]['name']
-        replaced_real_name = replace_str(real_name)
-        if replaced_real_name not in whole_data_hash_by_name:
-            whole_data_hash_by_name[replaced_real_name] = {}
-        whole_data_hash_by_name[replaced_real_name][person_id] = whole_author_profile[person_id]['papers']
+        if real_name not in whole_data_hash_by_name:
+            whole_data_hash_by_name[real_name] = {}
+        whole_data_hash_by_name[real_name][person_id] = whole_author_profile[person_id]['papers']
     
     # format_process
     test_pub = {}
@@ -179,20 +183,19 @@ if __name__ == "__main__":
         unass_paper_info = cna_valid_pub[unass_paper_id]
         the_author_name = unass_paper_info['authors'][author_rank]['name']
         old_name = the_author_name
-        the_author_name = replace_str(the_author_name)
 
         test_pub[unass_paper_id] = unass_paper_info
-        #if unass_paper_id == "Q8tZ3xgK":
-        #    print('find Q8tZ3xgK')
-        if the_author_name in whole_data_hash_by_name:
-            for same_name_author_id in whole_data_hash_by_name[the_author_name]:
-                negative_example.append([None, unass_paper_id, the_author_name, author_rank, same_name_author_id])
-                for paper_id in whole_data_hash_by_name[the_author_name][same_name_author_id]:
+        real_author_name_list = []
+        for real_author_name in whole_data_hash_by_name:
+            if compare_name(real_author_name, the_author_name):
+                real_author_name_list.append(real_author_name)
+
+        for author_name in real_author_name_list:
+            for same_name_author_id in whole_data_hash_by_name[author_name]:
+                negative_example.append([None, unass_paper_id, author_name, author_rank, same_name_author_id])
+                for paper_id in whole_data_hash_by_name[author_name][same_name_author_id]:
                     test_pub[paper_id] = whole_author_profile_pub[paper_id]
-        else:
-            #print('the_author_name', the_author_name)
-            #print('old_name', old_name)
-            pass
+
     if INIT_TEST_ALTER_PUB:
         print('----- INIT_TEST_ALTER_PUB START -----')
         # format_process.save_format_data(test_pub, file_name_alter_pub)
@@ -235,7 +238,7 @@ if __name__ == "__main__":
     #gensim_title, gensum_abstract = None, None
 
     #cna_valid_unass_competition = cna_valid_unass_competition[:20]
-    num_pool = 4
+    num_pool = 8
     len_data = len(cna_valid_unass_competition)
     print("Length of data", len_data)
     print('----- mutiprocess run f START -----')

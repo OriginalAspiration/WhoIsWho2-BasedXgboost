@@ -1,3 +1,6 @@
+import sys
+sys.path.append("/home/rqy/.local/lib/python3.5/site-packages")
+
 import time
 import json
 import pickle
@@ -272,7 +275,7 @@ if __name__ == "__main__":
         print('----- save_model -----')
         bst.save_model(model_name)
         #tar = xgb.Booster(model_file=model_name)
-    
+
     if True:
         p2p_result(train_pub, model_name, data_result_dir, existing_data_hash_by_name, positive_example, negative_example, nltk_title, nltk_abstract, gensim_title, gensum_abstract)
 

@@ -1,3 +1,5 @@
+import sys
+sys.path.append("/home/rqy/.local/lib/python3.5/site-packages")
 import time
 import json
 import pickle
@@ -5,9 +7,154 @@ import pickle
 import numpy as np
 import xgboost as xgb
 
+def basic_name(author_name,name):
+    tmp_name = name.replace("-"," ").replace("  "," ")
+    tmp_author_name = author_name.replace("_"," ")
+    if replace_str(tmp_name) == replace_str(tmp_author_name):
+        return True
+    return False
+
+def name23(author_name,name):
+    first_name = None
+    second_name = None
+    first_author_name = None
+    second_author_name = None
+    author_name = author_name.split("_")
+    author_name_len = len(author_name)
+    if author_name_len == 2:
+        first_author_name = author_name[1]
+        second_author_name = author_name[0]
+    if author_name_len == 3:
+        first_author_name = author_name[2]
+        second_author_name = author_name[0]+author_name[1]
+    name = name.replace("-","")
+    name = name.split(" ")
+    name_len = len(name)
+    if name_len == 2:
+        first_name = name[1]
+        second_name = name[0]
+    if name_len == 3:
+        first_name = name[2]
+        second_name = name[0]+name[1]
+
+    if first_name is None or \
+       second_name is None or \
+       first_author_name is None or \
+       second_author_name is None:
+        return False
+
+    if second_name == second_author_name and \
+        first_name == first_author_name:
+            return True
+    if second_name == first_author_name and \
+        first_name == second_author_name:
+            return True
+    return False
+
+def name_fuck(author_name, name):#处理缩写的情况
+    first_name = None
+    second_name = None
+    first_author_name = None
+    second_author_name = None
+    t = author_name
+    t1 = name
+    author_name = author_name.split("_")
+    author_name_len = len(author_name)
+    name = name.replace("  "," ")
+    if len(name) == 0:
+        return False
+    try:
+        if name[0] == ' ':
+            name= name[1:]
+        if author_name_len == 2:
+            first_author_name = author_name[1]
+            second_author_name = author_name[0][0]
+            if author_name_len == 3:
+                first_author_name = author_name[2]
+                second_author_name = author_name[0][0]+author_name[1][0]
+        name = name.replace("-","")
+        name = name.split(" ")
+        name_len = len(name)
+        if name_len == 2:
+            first_name = name[1]
+            second_name = name[0][0]
+        if name_len == 3:
+            first_name = name[2]
+            second_name = name[0][0]+name[1][0]
+    except Exception as e:
+        print(t)
+        print(t1)
+        print(name)
+        print(author_name)
+        print(name[0])
+        exit()
+
+    if first_name is None or \
+       second_name is None or \
+       first_author_name is None or \
+       second_author_name is None:
+        return False
+
+    if second_name == second_author_name and \
+        first_name == first_author_name:
+            return True
+    if second_name == first_author_name and \
+        first_name == second_author_name:
+            return True
+    return False
+
+def is_author_name_compress(author_name):
+    author_name = author_name.split("_")
+    author_name_len = len(author_name)
+    if author_name_len == 2 and \
+         (len(author_name[0]) == 1 or \
+         len(author_name[1]) == 1):
+         return True
+
+    if author_name_len == 3 :
+        if len(author_name[0]) == 1 and \
+        len(author_name[1]) == 1:
+            return True
+    if len(author_name[1]) == 1 and \
+        len(author_name[2]) == 1:
+            return True
+    return False
+
+def compare_name(author_name, name):
+    old_name = name
+    author_name = author_name.lower()
+    name = name.lower().replace("."," ").replace("  "," ")
+
+    #最基础的一种情况
+    if basic_name(author_name, name):
+        return True
+    if name23(author_name, name):
+        return True
+    if '.' in old_name and name_fuck(author_name, name):
+        return True
+
+    return False
+
+def compare_name_new(author_name, name):
+    old_name = name
+    author_name = author_name.lower()
+    name = name.lower().replace("."," ").replace("  "," ")
+
+    #最基础的一种情况
+    if basic_name(author_name, name):
+        return True
+    if name23(author_name, name):
+        return True
+    if '.' in old_name and name_fuck(author_name, name):
+        return True
+    if is_author_name_compress(author_name):
+        #print('author_name', author_name)
+        if name_fuck(author_name, name):
+            return True
+    return False
 
 def replace_str(input):
-    input = input.strip().replace('_', '').replace('-', '').replace(' ', '').replace('.', '').lower()
+    input = input.strip().replace('_', '').replace('-', '').replace(' ', '').replace('.', '').replace(chr(160), '').lower()
     return input.replace('jie yang', 'jieyang').replace('yangjie', 'jieyang').replace('liubing', 'bingliu').replace('0008', '').replace('0002', '')
 
 
