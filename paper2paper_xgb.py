@@ -179,17 +179,19 @@ def p2p_result(train_pub, model_name, data_result_dir, existing_data_hash_by_nam
 # def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract):
 
 if __name__ == "__main__":
-    RETRAIN_P2P_XGB_MODEL = True
-    random.seed(0)
-    with open('data/track2/train/train_pub_alter.json', 'r') as r:
-        train_pub = json.load(r)
-    nltk_title, nltk_abstract = load_nltk_result()
-    gensim_title, gensum_abstract = load_gensim_result()
+    RETRAIN_P2P_XGB_MODEL = False
+    REWRITE_P2P_XGB_RESULT = False
+    if RETRAIN_P2P_XGB_MODEL or REWRITE_P2P_XGB_RESULT:
+        random.seed(0)
+        with open('data/track2/train/train_pub_alter.json', 'r') as r:
+            train_pub = json.load(r)
+        nltk_title, nltk_abstract = load_nltk_result()
+        gensim_title, gensum_abstract = load_gensim_result()
 
-    with open('data/track2/train/training_data.pkl', 'rb') as file:
-        existing_data_hash_by_name, positive_example, negative_example = pickle.load(file)
-    data_result_dir = 'data/track2/train/train_pub_p2p_result_title.res'
-    model_name = 'paper2paper_xgb_1.model'
+        with open('data/track2/train/training_data.pkl', 'rb') as file:
+            existing_data_hash_by_name, positive_example, negative_example = pickle.load(file)
+        data_result_dir = 'data/track2/train/train_pub_p2p_result_title.res'
+        model_name = 'paper2paper_xgb_1.model'
 
 
     if RETRAIN_P2P_XGB_MODEL:
@@ -276,7 +278,7 @@ if __name__ == "__main__":
         bst.save_model(model_name)
         #tar = xgb.Booster(model_file=model_name)
 
-    if True:
+    if REWRITE_P2P_XGB_RESULT:
         p2p_result(train_pub, model_name, data_result_dir, existing_data_hash_by_name, positive_example, negative_example, nltk_title, nltk_abstract, gensim_title, gensum_abstract)
 
 

@@ -4,9 +4,9 @@ import re
 
 random.seed(0)
 
-with open('data/track2/train/train_author.json', 'r') as r:
+with open('data/track2/cna_data/whole_author_reformat_like_train.json', 'r') as r:
     train_author = json.load(r)
-with open('data/track2/train/train_pub.json', 'r') as r:
+with open('data/track2/cna_data/whole_author_profile_pub.json', 'r') as r:
     train_pub = json.load(r)
 
 def fix_name(s):

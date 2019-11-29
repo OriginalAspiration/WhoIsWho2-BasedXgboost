@@ -21,6 +21,8 @@ import nltk.stem.porter as pt
 from nltk.corpus import stopwords
 from train_model import cosVector
 
+from store_keywords_map import process_keyword
+
 def fix_name(s):
     s = s.lower().strip()
     x = re.split(r'[^a-z]', s)
@@ -533,46 +535,17 @@ if __name__ == "__main__":
     train_y = []
     total = 0
 
-
     with open('data/track2/train/training_data.pkl', 'rb') as file:
         existing_data_hash_by_name,positive_example,negative_example = pickle.load(file)
 
-    #with open('data/kdd_embedding/train_pid_order_to_features.pkl', 'rb') as rb:
-    #    kdd_data = pickle.load(rb)
-    #with open('data/kdd_embedding/train_pid_order_to_features_triplet.pkl', 'rb') as rb:
-    #    kdd_data_triplet = pickle.load(rb)
-    kdd_data = None
-    kdd_data_triplet = None
+    with open('data/kdd_embedding/whole_pid_order_to_features.pkl', 'rb') as rb:
+       kdd_data = pickle.load(rb)
+    with open('data/kdd_embedding/whole_pid_order_to_features_triplet.pkl', 'rb') as rb:
+       kdd_data_triplet = pickle.load(rb)
+    # kdd_data = None
+    # kdd_data_triplet = None
     with open('data/track2/train/keywords_map.pkl', 'rb') as rb:
         k2k_edges = pickle.load(rb)
-
-    '''max_t =0
-    min_t =0
-     
-    for x in kdd_data_triplet:
-        y = kdd_data_triplet[x]
-        t = float(np.sum(y))
-        
-        if math.isnan(t) or t == 0:
-            print('++', 'y', y, 'x', x)
-        max_t = max(t, max_t)
-        min_t = min(t, max_t)
-    print('max_t', max_t)
-    print('min_t', min_t)
-    for x in kdd_data:
-        y = kdd_data[x]
-        t = float(np.sum(y))
-
-        if math.isnan(t) or t == 0:
-            print('y', y, 'x', x)
-        
-        max_t = max(t, max_t)
-        min_t = min(t, max_t)
-    print('max_t', max_t)
-    print('min_t', min_t)
-    
-    assert False'''
-
 
     cnt = 0
     min_x = None

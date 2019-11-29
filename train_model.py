@@ -636,7 +636,7 @@ if __name__ == "__main__":
                          positive_example,
                          negative_example)
 
-    file_name_pub_original = 'data/track2/train/train_pub.json'
+    file_name_pub_original = 'data/track2/cna_data/whole_author_profile_pub.json'
     with open(file_name_pub_original, 'r') as r:
             pub_original = json.load(r)
     if train_gensim:

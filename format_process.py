@@ -134,7 +134,7 @@ def multi_process_format_data(pub, num_pool=8):
 
 
 if __name__ == '__main__':
-    with open('data/track2/train/train_pub.json', 'r') as r:
+    with open('data/track2/cna_data/whole_author_profile_pub.json', 'r') as r:
         train_pub = json.load(r)
 
     new_pub = multi_process_format_data(train_pub)
