@@ -555,43 +555,47 @@ if __name__ == "__main__":
     sum_t_64 = 0
     count = 0'''
 
-    num_pool = 4
-    len_data = len(positive_example)
-    print("Length of data", len_data)
-    pool = Pool()#train_pub
-    step = len_data//num_pool
-    id = 0
-    sub_data = []
-    jobs = []
-    for one_data in positive_example:
-        sub_data.append(one_data)
-        if len(sub_data) >= step:
-            jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
-                                train_pub, kdd_data, kdd_data_triplet, k2k_edges, id, False)))
-            id += 1
-            sub_data = []
+    # num_pool = 4
+    # len_data = len(positive_example)
+    # print("Length of data", len_data)
+    # pool = Pool()#train_pub
+    # step = len_data//num_pool
+    # id = 0
+    # sub_data = []
+    # jobs = []
+    # for one_data in positive_example:
+    #     sub_data.append(one_data)
+    #     if len(sub_data) >= step:
+    #         jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
+    #                             train_pub, kdd_data, kdd_data_triplet, k2k_edges, id, False)))
+    #         id += 1
+    #         sub_data = []
 
-    if len(sub_data) > 0:
-        jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
-                                    train_pub, kdd_data, kdd_data_triplet, k2k_edges, id, False)))
-        id += 1
-        sub_data = {}
+    # if len(sub_data) > 0:
+    #     jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
+    #                                 train_pub, kdd_data, kdd_data_triplet, k2k_edges, id, False)))
+    #     id += 1
+    #     sub_data = {}
     
-    pool.close()
-    pool.join()
+    # pool.close()
+    # pool.join()
 
-    for j in jobs:
-        sub_results = j.get()
-        for x in sub_results:
-            train_x.append(x)
-            train_y.append(1)
+    # for j in jobs:
+    #     sub_results = j.get()
+    #     for x in sub_results:
+    #         train_x.append(x)
+    #         train_y.append(1)
 
-            if min_x is None:
-                min_x = x
-                max_x = x
-            min_x = np.min( [x, min_x], axis=0 )
-            max_x = np.max( [x, max_x], axis=0 )
-            mean_x.append(x)
+    #         if min_x is None:
+    #             min_x = x
+    #             max_x = x
+    #         min_x = np.min( [x, min_x], axis=0 )
+    #         max_x = np.max( [x, max_x], axis=0 )
+    #         mean_x.append(x)
+    result = f(sub_data, existing_data_hash_by_name, train_pub, kdd_data, kdd_data_triplet, k2k_edges, 0, False)
+    for x in result:
+        train_x.append(x)
+        train_y.append(1)
     
     print('min_x', min_x)
     print('max_x', max_x)
@@ -607,42 +611,46 @@ if __name__ == "__main__":
     max_x = None
     mean_x = []
 
-    num_pool = 4
-    len_data = len(negative_example)
-    print("Length of data", len_data)
-    pool = Pool()#train_pub
-    step = len_data//num_pool
-    id = 0
-    sub_data = []
-    jobs = []
-    for one_data in negative_example:
-        sub_data.append(one_data)
-        if len(sub_data) >= step:
-            jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
-                                        train_pub, kdd_data, kdd_data_triplet, k2k_edges, id, True)))
-            id += 1
-            sub_data = []
+    # num_pool = 4
+    # len_data = len(negative_example)
+    # print("Length of data", len_data)
+    # pool = Pool()#train_pub
+    # step = len_data//num_pool
+    # id = 0
+    # sub_data = []
+    # jobs = []
+    # for one_data in negative_example:
+    #     sub_data.append(one_data)
+    #     if len(sub_data) >= step:
+    #         jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
+    #                                     train_pub, kdd_data, kdd_data_triplet, k2k_edges, id, True)))
+    #         id += 1
+    #         sub_data = []
 
-    if len(sub_data) > 0:
-        jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
-                                        train_pub, kdd_data, kdd_data_triplet, k2k_edges, id, True)))
-        id += 1
-        sub_data = {}
+    # if len(sub_data) > 0:
+    #     jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
+    #                                     train_pub, kdd_data, kdd_data_triplet, k2k_edges, id, True)))
+    #     id += 1
+    #     sub_data = {}
     
-    pool.close()
-    pool.join()
+    # pool.close()
+    # pool.join()
 
-    for j in jobs:
-        sub_results = j.get()
-        for x in sub_results:
-            train_x.append(x)
-            train_y.append(0)
-            if min_x is None:
-                min_x = x
-                max_x = x
-            min_x = np.min( [x, min_x], axis=0 )
-            max_x = np.max( [x, max_x], axis=0 )
-            mean_x.append(x)
+    # for j in jobs:
+    #     sub_results = j.get()
+    #     for x in sub_results:
+    #         train_x.append(x)
+    #         train_y.append(0)
+    #         if min_x is None:
+    #             min_x = x
+    #             max_x = x
+    #         min_x = np.min( [x, min_x], axis=0 )
+    #         max_x = np.max( [x, max_x], axis=0 )
+    #         mean_x.append(x)
+    result = f(sub_data, existing_data_hash_by_name, train_pub, kdd_data, kdd_data_triplet, k2k_edges, 0, True)
+    for x in result:
+        train_x.append(x)
+        train_y.append(0)
     
     print('min_x', min_x)
     print('max_x', max_x)
