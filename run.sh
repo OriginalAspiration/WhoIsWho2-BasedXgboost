@@ -10,6 +10,9 @@ python train_model.py
 echo "---------- paper2paper_xgb.py ----------"
 date
 python paper2paper_xgb.py
+echo "---------- stord_map.py ----------"
+date
+python store_keywords_map.py
 echo "---------- get_train_data.py ----------"
 date
 python get_train_data.py

@@ -399,10 +399,22 @@ def add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, 
 
         assert False
 
+def add_two_hop_keyword(result, paper_info_1, paper_info_2, k2k_edges):
+    kw_list_1 = [process_keyword(word) for word in paper_info_1['keywords']]
+    kw_list_2 = [process_keyword(word) for word in paper_info_2['keywords']]
+    n = 0
+    for kw1 in kw_list_1:
+        if kw1 not in k2k_edges:
+            continue
+        for kw2 in kw_list_2:
+            if kw2 in k2k_edges[kw1]:
+                n += 1
+    result.append(n / (len(kw_list_1) * len(kw_list_2) + 1e-8))
+
 
 def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank,
                       nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
-                      kdd_data=None, kdd_data_triplet=None):
+                      kdd_data=None, kdd_data_triplet=None, k2k_edges=None):
     result = []
     add_variate_same_author2(result, paper_info_1, paper_info_2)  # 3
 
@@ -424,11 +436,14 @@ def compare_two_paper(paper_id_1, paper_id_2, paper_info_1, paper_info_2, author
         add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank, kdd_data, 100) # 1
     if kdd_data_triplet is not None:
         add_variate_kdd(result, paper_id_1, paper_id_2, paper_info_1, paper_info_2, author_rank, kdd_data_triplet, 64) # 1
+    if k2k_edges is not None:
+        add_two_hop_keyword(result, paper_info_1, paper_info_2, k2k_edges) # 1
     # 23
     return result
 
 def compare_paper_with_set(id_list, unass_paper_id, train_pub, author_rank, nltk_title, nltk_abstract,
-                           gensim_title, gensum_abstract, p2p_result, kdd_data=None, kdd_data_triplet=None):
+                           gensim_title, gensum_abstract, p2p_result, kdd_data=None,
+                           kdd_data_triplet=None, k2k_edges=None):
     one_person_sim_list = []
     for paper_id in id_list:
         #print('paper_id',paper_id, 'unass_paper_id', unass_paper_id)
@@ -442,7 +457,7 @@ def compare_paper_with_set(id_list, unass_paper_id, train_pub, author_rank, nltk
                                         author_rank,
                                         nltk_title, nltk_abstract,
                                         gensim_title, gensum_abstract, p2p_result,
-                                        kdd_data, kdd_data_triplet))
+                                        kdd_data, kdd_data_triplet, k2k_edges))
     x = np.sum(one_person_sim_list, axis=0) / len(one_person_sim_list)
     
     x = np.concatenate([x, np.max(one_person_sim_list, axis=0)], 0)
@@ -476,7 +491,7 @@ def load_p2p_result():
         p2p_result = pickle.load(r1)
     return p2p_result
 
-def f(negative_example, existing_data_hash_by_name, train_pub, kdd_data, kdd_data_triplet, pool_id, is_negative):
+def f(negative_example, existing_data_hash_by_name, train_pub, kdd_data, kdd_data_triplet, k2k_edges, pool_id, is_negative):
     print('pool_id', pool_id, 'begin')
     results = []
 
@@ -489,13 +504,13 @@ def f(negative_example, existing_data_hash_by_name, train_pub, kdd_data, kdd_dat
         for unass_author_id, unass_paper_id, the_author_name, author_rank, other_name_author_id in x_negative_example:
             x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][other_name_author_id], unass_paper_id, 
                                     train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
-                                    kdd_data, kdd_data_triplet)
+                                    kdd_data, kdd_data_triplet, k2k_edges)
             results.append(x)
     else:
         for unass_author_id, unass_paper_id, the_author_name, author_rank in x_negative_example:
             x = compare_paper_with_set(existing_data_hash_by_name[the_author_name][unass_author_id], unass_paper_id, 
                                     train_pub, author_rank, nltk_title, nltk_abstract, gensim_title, gensum_abstract, p2p_result,
-                                    kdd_data, kdd_data_triplet)
+                                    kdd_data, kdd_data_triplet, k2k_edges)
             results.append(x)
 
     return results
@@ -528,6 +543,8 @@ if __name__ == "__main__":
     #    kdd_data_triplet = pickle.load(rb)
     kdd_data = None
     kdd_data_triplet = None
+    with open('data/track2/train/keywords_map.pkl', 'rb') as rb:
+        k2k_edges = pickle.load(rb)
 
     '''max_t =0
     min_t =0
@@ -577,13 +594,13 @@ if __name__ == "__main__":
         sub_data.append(one_data)
         if len(sub_data) >= step:
             jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
-                                train_pub, kdd_data, kdd_data_triplet, id, False)))
+                                train_pub, kdd_data, kdd_data_triplet, k2k_edges, id, False)))
             id += 1
             sub_data = []
 
     if len(sub_data) > 0:
         jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
-                                    train_pub, kdd_data, kdd_data_triplet, id, False)))
+                                    train_pub, kdd_data, kdd_data_triplet, k2k_edges, id, False)))
         id += 1
         sub_data = {}
     
@@ -629,13 +646,13 @@ if __name__ == "__main__":
         sub_data.append(one_data)
         if len(sub_data) >= step:
             jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
-                                        train_pub, kdd_data, kdd_data_triplet, id, True)))
+                                        train_pub, kdd_data, kdd_data_triplet, k2k_edges, id, True)))
             id += 1
             sub_data = []
 
     if len(sub_data) > 0:
         jobs.append(pool.apply_async(f, args=(sub_data, existing_data_hash_by_name, 
-                                        train_pub, kdd_data, kdd_data_triplet, id, True)))
+                                        train_pub, kdd_data, kdd_data_triplet, k2k_edges, id, True)))
         id += 1
         sub_data = {}
     
