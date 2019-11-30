@@ -32,7 +32,7 @@ for unass_paper_id, sd in score_dict.items():
     predicted_id = id_list[np.argsort(ypred)[-1].item()]
 
     for pred, id in zip(ypred, id_list):
-        if pred >= y1-0.005 and predicted_id != id:
+        if pred >= y1-0.003 and predicted_id != id:
             cnt += 1
 
             result_dict.setdefault(id, [])
@@ -43,7 +43,7 @@ for unass_paper_id, sd in score_dict.items():
 print('cnt', cnt)
 print('len kk ', len(kk))
 
-'''
+
 #result_dict
 author_id_dict = {}
 for unass_paper_id, sd in score_dict.items():
@@ -59,10 +59,11 @@ for unass_paper_id, sd in score_dict.items():
 
 for id,sd in author_id_dict.items():
     if id not in result_dict:
-        sd.sort()
-        result_dict[id] = [ sd[0][1] ]
+        result_dict[id] = []
+        for k in sd:
+            result_dict[id].append(k[1])
 
-        print('id', id, sd[0][1])'''
+        #print('id', id, sd[0][1])
 
 with open('result3.json', 'w') as file:
     json.dump(result_dict, file)
