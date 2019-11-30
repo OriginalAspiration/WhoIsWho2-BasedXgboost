@@ -78,6 +78,9 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, kdd_data=None,
         x = tqdm(cna_valid_unass_competition)
     else:
         x = cna_valid_unass_competition
+    
+    score_dict = {}
+
     for unass_data in x:
         unass_paper_id = unass_data[:8]
         author_rank = int(unass_data[9:])
@@ -106,14 +109,18 @@ def f(cna_valid_unass_competition, cna_valid_pub, test_alter_pub, kdd_data=None,
             result_dict[predicted_author_id] = []
         result_dict[predicted_author_id].append(unass_paper_id)
 
+        score_dict[unass_paper_id] = {}
+        score_dict[unass_paper_id]['ypred'] = ypred
+        score_dict[unass_paper_id]['id_list'] = id_list
+
     print("pool",pool_id , "is finish.", "[", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "]", "[Finish lemma ]")
-    return result_dict
+    return result_dict, score_dict
 
 if __name__ == "__main__":
     UPDATE_KDD_BY_SELF = False
-    INIT_TEST_ALTER_PUB = True
-    INIT_P2P_XGB = True
-    TRAIN_MODEL = True
+    INIT_TEST_ALTER_PUB = False
+    INIT_P2P_XGB = False
+    TRAIN_MODEL = False
 
     model_name = 'xgb_1.model'
     model_call_func = get_model_func(model_name, 'xgb')
@@ -251,9 +258,11 @@ if __name__ == "__main__":
     pool.join()
 
     results = {}
+    score_dicts = {}
     for j in jobs:
-        sub_results = j.get()
+        sub_results, sub_score_dicts = j.get()
         print( len(sub_results) )
+        score_dicts.update(sub_score_dicts)
         for y in sub_results:
             if y in results:
                 results[y] += sub_results[y]
@@ -261,6 +270,9 @@ if __name__ == "__main__":
                 results[y] = sub_results[y]
     print( len(results) )
 
-    with open('result.json', 'w') as w:
+    with open('result2.json', 'w') as w:
         w.write(json.dumps(results))
+    
+    with open('score_dicts.pkl', 'wb') as file:
+        pickle.dump(score_dicts, file)
 
