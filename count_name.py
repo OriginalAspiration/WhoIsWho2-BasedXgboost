@@ -120,7 +120,7 @@ def is_author_name_compress(author_name):
             return True
     return False
 
-def compare_name(author_name, name):
+def compare_name_old(author_name, name):
     old_name = name
     author_name = author_name.lower()
     name = name.lower().replace("."," ").replace("  "," ")
@@ -135,7 +135,69 @@ def compare_name(author_name, name):
 
     return False
 
-def compare_name_new(author_name, name):
+zhuanhuanbiao = {
+    "L Deng" : ["li_deng"],
+    "Wang Ying" : ["haiying_wang"],
+    "Li Wen-Gang" : [""],
+    "Li Chun" : ["c_c_lin"], #???
+    "GUAN Ning-zhang" : [""],
+    "ZHAO Shi-hao" : [""],
+    "Zongcheng Zhan" : [""],
+    "LI Wen-gang" : [""],
+    "Zhang Shan-Shan" : [""],
+    "LI Chun" : [""],
+    "Peng Chong-mei" : [""],
+    "zhang rang" : [""],
+    "Pan Xue-Qiang" : [""],
+    "jianfang" : ["jianfang_wang"],
+    "XIN Rong-ya" : [""],
+    "Hu Guang" : [""],
+    "WANG Zhi-min" : [""],
+    "hui" : ["hui_zhang"],
+    "qu zhang" : [""],
+    "ZHAO Shu-hua" : [""],
+    "FENG Jiong-xin" : [""],
+    "ZHANG Xiao-yan" : [""],
+    "Dr. Hui Xiong" : ["hui_xiong"],
+    "Xie D" : ["dan_xie"],
+    "ZHANG Yong-xin" : [""],
+    "Zhang Xian" : [""],
+    "osamu" : ["osamu_watanabe"],
+    "bo" : [""],
+    "Chen Liang-Mian" : [""],
+    "Liu, Ling" : ["ling_liu"],
+    "WANG Gui-xian" : [""],
+    "XIAO Wang-chuan" : [""],
+    "hang" : ["hang_li"],
+    "MENG Meng" : ["meng_wang"],  #????
+    "K Zhou" : [""],
+    "ZHAO Yue" : [""],
+    "WU Yi-peng" : [""],
+    " " : ["hong_he", "xia_li"],
+    "WANG Chuan-li" : [""],
+    "WANG Zhen-zhong" : [""],
+    "fei" : ["fei_wei"],
+    "lin" : ["lin_he"],
+    "CUI Guo-xing" : [""],
+    "CHEN Liang-mian" : [""],
+    "Wang Zhen-Zhong" : [""],
+    "FENG Wei-hong" : [""],
+    "jianping" : ["jianping_wu", "jianping_ding", "jianping_fan"],
+    "jinghong" : ["jinghong_li"],
+    "Zhang Wei" : [""],
+    "jun" : ["jun_yang"],
+    "QIAN Yu" : [""],
+    "Michael Zhang" : ["qiwei_zhang"],
+    "michael zhang" : ["qiwei_zhang"],
+    "Xian Zhang" : [""],
+    "Wan Kai-Yang" : [""],
+}
+
+
+def compare_name(author_name, name):
+    if name in zhuanhuanbiao and author_name in zhuanhuanbiao[name]:
+        return True
+
     old_name = name
     author_name = author_name.lower()
     name = name.lower().replace("."," ").replace("  "," ")
@@ -155,7 +217,7 @@ def compare_name_new(author_name, name):
 
 def replace_str(input):
     input = input.strip().replace('_', '').replace('-', '').replace(' ', '').replace('.', '').replace(chr(160), '').lower()
-    return input.replace('jie yang', 'jieyang').replace('yangjie', 'jieyang').replace('liubing', 'bingliu').replace('0008', '').replace('0002', '')
+    return input.replace('jie yang', 'jieyang').replace('yangjie', 'jieyang').replace('liubing', 'bingliu').replace('0008', '').replace('0002', '').replace('0001', '')
 
 
 if __name__ == "__main__":

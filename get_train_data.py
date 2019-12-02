@@ -21,6 +21,8 @@ import nltk.stem.porter as pt
 from nltk.corpus import stopwords
 from train_model import cosVector
 
+from store_keywords_map import process_keyword
+
 def fix_name(s):
     s = s.lower().strip()
     x = re.split(r'[^a-z]', s)
