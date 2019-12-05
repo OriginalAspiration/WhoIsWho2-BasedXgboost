@@ -41,3 +41,7 @@ sh run.sh
 | train_tf_idf.txt | |
 | train_word_dict.txt | |
 | train_abstract_word_dict.txt | |
+
+
+备注：如果需要复现最佳结果，需要切换到train_p2p分支，用该版本计算的特征训练p2p_xgb模型，并将模型训练的结果data/track2/train/train_pub_p2p_result_title.res和data/track2/test/test_pub_p2p_result_title.res考本到本分支的对应位置，删除run.sh中python paper2paper_xgb.py这一行，并将script.py中INIT_P2P_XGB置为False。
+使用上述方法可以将F1得分提升约0.005，我们猜测是因为train_p2p分支使用的是更加简单的特征，这些特征对于p2p_xgb模型效果更好。如果觉得麻烦可以忽略这一备注，对最终结果和理解本模型不会有显著的影响。如果对于模型运行方法有任何疑问或有任何建议，可以发送邮件至baiwt@bupt.edu.cn
