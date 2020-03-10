@@ -26,7 +26,7 @@ sh run.sh
 
 * **script.py**: 根据cna_data生成最终结果result.json
 
-* **format_process.py**: 调整准确率和召回率比例（使二者尽可能相近），获得最佳F1分数
+* **post_process.py**: 调整准确率和召回率比例（使二者尽可能相近），获得最佳F1分数
 
 
 
